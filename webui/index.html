@@ -222,9 +222,7 @@
             <div class="card">
                 <h2>已加载插件</h2>
                 <table id="plugins-table">
-                    <thead>
-                        <tr><th>插件名</th><th>命令数量</th></tr>
-                    </thead>
+                    <thead><tr><th>插件名</th><th>命令数量</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -298,10 +296,10 @@
 
 <script>
     // ---------- 全局变量 ----------
-    let currentPage = 'dashboard';
-    let mainConfigMode = 'form';
-    let pluginConfigMode = 'form';
-    let ws = null;
+    var currentPage = 'dashboard';
+    var mainConfigMode = 'form';
+    var pluginConfigMode = 'form';
+    var ws = null;
 
     // ---------- HTTP 工具 ----------
     function httpGet(url, callback) {
@@ -310,12 +308,20 @@
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    try { var data = JSON.parse(xhr.responseText); callback(null, data); } catch (e) { callback(e, null); }
-                } else { callback(new Error('HTTP ' + xhr.status), null); }
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        callback(null, data);
+                    } catch (e) {
+                        callback(e, null);
+                    }
+                } else {
+                    callback(new Error('HTTP ' + xhr.status), null);
+                }
             }
         };
         xhr.send();
     }
+
     function httpPost(url, data, callback) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
@@ -323,8 +329,15 @@
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    try { var res = JSON.parse(xhr.responseText); callback(null, res); } catch (e) { callback(e, null); }
-                } else { callback(new Error('HTTP ' + xhr.status), null); }
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        callback(null, res);
+                    } catch (e) {
+                        callback(e, null);
+                    }
+                } else {
+                    callback(new Error('HTTP ' + xhr.status), null);
+                }
             }
         };
         xhr.send(JSON.stringify(data));
@@ -340,9 +353,13 @@
             var currentText = logContainer.innerText;
             logContainer.innerText = '[' + log.time + '] ' + log.message + '\n' + currentText;
             var lines = logContainer.innerText.split('\n');
-            if (lines.length > 100) logContainer.innerText = lines.slice(0, 100).join('\n');
+            if (lines.length > 100) {
+                logContainer.innerText = lines.slice(0, 100).join('\n');
+            }
         };
-        ws.onclose = function() { setTimeout(connectWebSocket, 3000); };
+        ws.onclose = function() {
+            setTimeout(connectWebSocket, 3000);
+        };
     }
 
     // ---------- 仪表盘更新 ----------
@@ -376,7 +393,9 @@
         httpGet('/api/logs?limit=30', function(err, logs) {
             if (err) return console.error('获取日志失败', err);
             var logText = '';
-            for (var i = 0; i < logs.length; i++) logText += '[' + logs[i].time + '] ' + logs[i].message + '\n';
+            for (var i = 0; i < logs.length; i++) {
+                logText += '[' + logs[i].time + '] ' + logs[i].message + '\n';
+            }
             document.getElementById('logs').innerText = logText || '暂无日志';
         });
     }
@@ -405,7 +424,10 @@
                     return function() {
                         httpPost('/api/plugin/toggle', { pluginName: pluginName, enabled: !currentEnabled }, function(err) {
                             if (err) alert('操作失败: ' + err.message);
-                            else { alert('插件 ' + pluginName + ' 已' + (!currentEnabled ? '启用' : '禁用')); loadPluginsDetail(); }
+                            else {
+                                alert('插件 ' + pluginName + ' 已' + (!currentEnabled ? '启用' : '禁用'));
+                                loadPluginsDetail();
+                            }
                         });
                     };
                 })(p.name, p.enabled);
@@ -419,7 +441,10 @@
                         if (confirm('确定要热重载插件 ' + pluginName + ' 吗？')) {
                             httpPost('/api/plugin/reload/' + pluginName, {}, function(err) {
                                 if (err) alert('重载失败: ' + err.message);
-                                else { alert('插件 ' + pluginName + ' 已重载'); loadPluginsDetail(); }
+                                else {
+                                    alert('插件 ' + pluginName + ' 已重载');
+                                    loadPluginsDetail();
+                                }
                             });
                         }
                     };
@@ -433,12 +458,16 @@
         });
     }
 
-    // ---------- 依赖图 ----------
+    // ---------- 依赖图（力导向图，Canvas 实现） ----------
     function loadDependencyGraph() {
         httpGet('/api/plugins/deps-graph', function(err, data) {
-            if (err) { console.error('获取依赖图失败', err); alert('获取依赖图失败: ' + err.message); return; }
-            var nodes = data.nodes, edges = data.edges;
-            if (!nodes || nodes.length === 0) { alert('无插件数据'); return; }
+            if (err) return console.error('获取依赖图失败', err);
+            var nodes = data.nodes;
+            var edges = data.edges;
+            if (!nodes || nodes.length === 0) {
+                alert('无插件数据');
+                return;
+            }
 
             var modal = document.createElement('div');
             modal.style.position = 'fixed';
@@ -465,11 +494,21 @@
             toolbar.style.marginBottom = '10px';
             toolbar.style.display = 'flex';
             toolbar.style.gap = '10px';
-            var resetBtn = document.createElement('button'); resetBtn.innerText = '重置视图'; resetBtn.style.padding = '5px 12px';
-            var zoomInBtn = document.createElement('button'); zoomInBtn.innerText = '放大';
-            var zoomOutBtn = document.createElement('button'); zoomOutBtn.innerText = '缩小';
-            var zoomSpan = document.createElement('span'); zoomSpan.style.color = 'white'; zoomSpan.innerText = '缩放: 100%';
-            toolbar.appendChild(resetBtn); toolbar.appendChild(zoomInBtn); toolbar.appendChild(zoomOutBtn); toolbar.appendChild(zoomSpan);
+
+            var resetBtn = document.createElement('button');
+            resetBtn.innerText = '重置视图';
+            var zoomInBtn = document.createElement('button');
+            zoomInBtn.innerText = '放大';
+            var zoomOutBtn = document.createElement('button');
+            zoomOutBtn.innerText = '缩小';
+            var zoomLevelSpan = document.createElement('span');
+            zoomLevelSpan.style.color = 'white';
+            zoomLevelSpan.innerText = '缩放: 100%';
+            toolbar.appendChild(resetBtn);
+            toolbar.appendChild(zoomInBtn);
+            toolbar.appendChild(zoomOutBtn);
+            toolbar.appendChild(zoomLevelSpan);
+
             var closeBtn = document.createElement('button');
             closeBtn.innerText = '关闭';
             closeBtn.style.position = 'absolute';
@@ -477,84 +516,143 @@
             closeBtn.style.right = '20px';
             closeBtn.style.backgroundColor = '#dc3545';
             closeBtn.style.color = 'white';
-            closeBtn.style.border = 'none';
-            closeBtn.style.padding = '6px 12px';
-            closeBtn.style.cursor = 'pointer';
+
             modal.appendChild(toolbar);
             modal.appendChild(canvas);
             modal.appendChild(closeBtn);
             document.body.appendChild(modal);
 
-            var transform = { scale: 1, offsetX: canvas.width/2, offsetY: canvas.height/2 };
-            var positions = {}, velocity = {};
+            var transform = { scale: 1, offsetX: canvas.width / 2, offsetY: canvas.height / 2 };
+            var positions = {};
+            var velocity = {};
             var radius = Math.min(canvas.width, canvas.height) * 0.35;
             var angleStep = (2 * Math.PI) / nodes.length;
             nodes.forEach(function(node, idx) {
                 var angle = idx * angleStep;
-                positions[node.id] = { x: canvas.width/2 + radius * Math.cos(angle), y: canvas.height/2 + radius * Math.sin(angle) };
+                positions[node.id] = {
+                    x: canvas.width/2 + radius * Math.cos(angle),
+                    y: canvas.height/2 + radius * Math.sin(angle)
+                };
                 velocity[node.id] = { x: 0, y: 0 };
             });
 
-            var springLength = 180, springStrength = 0.03, repulsionStrength = 4000, damping = 0.92, centerStrength = 0.008, physicsIterations = 20;
-            var dragging = false, dragNode = null, panning = false, panStart = { x: 0, y: 0 }, animationId = null;
+            var springLength = 180;
+            var springStrength = 0.03;
+            var repulsionStrength = nodes.length > 30 ? 2500 : 4000;
+            var damping = 0.92;
+            var centerStrength = 0.008;
+            var physicsIterations = nodes.length > 40 ? 10 : 20;
+            var dragging = false;
+            var dragNode = null;
+            var panning = false;
+            var panStart = { x: 0, y: 0 };
+            var animationId = null;
+            var hoveredNode = null;
 
-            function screenToWorld(sx, sy) { return { x: (sx - transform.offsetX) / transform.scale, y: (sy - transform.offsetY) / transform.scale }; }
-            function worldToScreen(wx, wy) { return { x: wx * transform.scale + transform.offsetX, y: wy * transform.scale + transform.offsetY }; }
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: (screenX - transform.offsetX) / transform.scale,
+                    y: (screenY - transform.offsetY) / transform.scale
+                };
+            }
+            function worldToScreen(worldX, worldY) {
+                return {
+                    x: worldX * transform.scale + transform.offsetX,
+                    y: worldY * transform.scale + transform.offsetY
+                };
+            }
             function updatePhysics() {
-                for (var i = 0; i < nodes.length; i++) {
-                    var node = nodes[i];
-                    var fx = 0, fy = 0, pos = positions[node.id];
-                    for (var j = 0; j < nodes.length; j++) {
-                        var other = nodes[j];
+                for (var ni = 0; ni < nodes.length; ni++) {
+                    var node = nodes[ni];
+                    var fx = 0, fy = 0;
+                    var pos = positions[node.id];
+                    for (var nj = 0; nj < nodes.length; nj++) {
+                        var other = nodes[nj];
                         if (other.id === node.id) continue;
-                        var otherPos = positions[other.id], dx = pos.x - otherPos.x, dy = pos.y - otherPos.y, dist = Math.hypot(dx, dy) + 1;
+                        var otherPos = positions[other.id];
+                        var dx = pos.x - otherPos.x;
+                        var dy = pos.y - otherPos.y;
+                        var dist = Math.hypot(dx, dy) + 1;
                         var force = repulsionStrength / (dist * dist);
-                        fx += (dx / dist) * force; fy += (dy / dist) * force;
+                        fx += (dx / dist) * force;
+                        fy += (dy / dist) * force;
                     }
-                    for (var k = 0; k < edges.length; k++) {
-                        var edge = edges[k];
+                    for (var ei = 0; ei < edges.length; ei++) {
+                        var edge = edges[ei];
                         if (edge.from === node.id) {
-                            var target = positions[edge.to], dx = pos.x - target.x, dy = pos.y - target.y, dist = Math.hypot(dx, dy);
+                            var target = positions[edge.to];
+                            var dx = pos.x - target.x;
+                            var dy = pos.y - target.y;
+                            var dist = Math.hypot(dx, dy);
                             var force = (dist - springLength) * springStrength;
-                            fx -= (dx / (dist + 0.001)) * force; fy -= (dy / (dist + 0.001)) * force;
+                            fx -= (dx / (dist + 0.001)) * force;
+                            fy -= (dy / (dist + 0.001)) * force;
                         } else if (edge.to === node.id) {
-                            var source = positions[edge.from], dx = pos.x - source.x, dy = pos.y - source.y, dist = Math.hypot(dx, dy);
+                            var source = positions[edge.from];
+                            var dx = pos.x - source.x;
+                            var dy = pos.y - source.y;
+                            var dist = Math.hypot(dx, dy);
                             var force = (dist - springLength) * springStrength;
-                            fx -= (dx / (dist + 0.001)) * force; fy -= (dy / (dist + 0.001)) * force;
+                            fx -= (dx / (dist + 0.001)) * force;
+                            fy -= (dy / (dist + 0.001)) * force;
                         }
                     }
-                    fx -= pos.x * centerStrength; fy -= pos.y * centerStrength;
+                    fx -= pos.x * centerStrength;
+                    fy -= pos.y * centerStrength;
                     velocity[node.id].x = (velocity[node.id].x + fx) * damping;
                     velocity[node.id].y = (velocity[node.id].y + fy) * damping;
                 }
-                for (var i = 0; i < nodes.length; i++) {
-                    var node = nodes[i];
+                for (var ni = 0; ni < nodes.length; ni++) {
+                    var node = nodes[ni];
                     positions[node.id].x += velocity[node.id].x;
                     positions[node.id].y += velocity[node.id].y;
-                    positions[node.id].x = Math.min(Math.max(positions[node.id].x, 50), canvas.width - 50);
-                    positions[node.id].y = Math.min(Math.max(positions[node.id].y, 50), canvas.height - 50);
+                    var margin = 50;
+                    positions[node.id].x = Math.min(Math.max(positions[node.id].x, margin), canvas.width - margin);
+                    positions[node.id].y = Math.min(Math.max(positions[node.id].y, margin), canvas.height - margin);
                 }
             }
-            function drawArrow(ctx, from, to, r) {
-                function getIntersection(x1,y1,x2,y2,cx,cy,rad) {
-                    var dx = x2 - x1, dy = y2 - y1, fx = x1 - cx, fy = y1 - cy, a = dx*dx + dy*dy;
-                    if (a === 0) return { x: x1, y: y1 };
-                    var b = 2*(fx*dx + fy*dy), c = fx*fx + fy*fy - rad*rad, d = b*b - 4*a*c;
-                    if (d < 0) return { x: x2, y: y2 };
-                    d = Math.sqrt(d);
-                    var t1 = (-b - d) / (2*a), t2 = (-b + d) / (2*a);
-                    var t = (t1 >=0 && t1<=1) ? t1 : t2;
-                    if (t<0 || t>1) t = 0;
-                    return { x: x1 + t*dx, y: y1 + t*dy };
-                }
-                var start = getIntersection(from.x, from.y, to.x, to.y, from.x, from.y, r);
-                var end = getIntersection(to.x, to.y, from.x, from.y, to.x, to.y, r);
-                ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+            function getCircleIntersection(x1, y1, x2, y2, cx, cy, r) {
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+                var fx = x1 - cx;
+                var fy = y1 - cy;
+                var a = dx * dx + dy * dy;
+                if (a === 0) return { x: x1, y: y1 };
+                var b = 2 * (fx * dx + fy * dy);
+                var c = (fx * fx + fy * fy) - r * r;
+                var d = b * b - 4 * a * c;
+                if (d < 0) return { x: x2, y: y2 };
+                d = Math.sqrt(d);
+                var t1 = (-b - d) / (2 * a);
+                var t2 = (-b + d) / (2 * a);
+                var t = Math.min(t1, t2);
+                if (t < 0 || t > 1) t = Math.max(t1, t2);
+                if (t < 0 || t > 1) return { x: x2, y: y2 };
+                return { x: x1 + t * dx, y: y1 + t * dy };
+            }
+            function drawArrow(ctx, from, to, nodeRadius) {
+                var start = getCircleIntersection(from.x, from.y, to.x, to.y, from.x, from.y, nodeRadius);
+                var end = getCircleIntersection(to.x, to.y, from.x, from.y, to.x, to.y, nodeRadius);
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
                 var angle = Math.atan2(end.y - start.y, end.x - start.x);
-                var arrowX = end.x, arrowY = end.y, arrowSize = 10;
-                var wing1 = { x: arrowX - arrowSize * Math.cos(angle + Math.PI/6), y: arrowY - arrowSize * Math.sin(angle + Math.PI/6) };
-                var wing2 = { x: arrowX - arrowSize * Math.cos(angle - Math.PI/6), y: arrowY - arrowSize * Math.sin(angle - Math.PI/6) };
-                ctx.beginPath(); ctx.moveTo(arrowX, arrowY); ctx.lineTo(wing1.x, wing1.y); ctx.lineTo(wing2.x, wing2.y); ctx.fillStyle = '#aaa'; ctx.fill();
+                var arrowSize = 10;
+                var arrowX = end.x;
+                var arrowY = end.y;
+                var angle1 = angle + Math.PI / 6;
+                var angle2 = angle - Math.PI / 6;
+                var wingX1 = arrowX - arrowSize * Math.cos(angle1);
+                var wingY1 = arrowY - arrowSize * Math.sin(angle1);
+                var wingX2 = arrowX - arrowSize * Math.cos(angle2);
+                var wingY2 = arrowY - arrowSize * Math.sin(angle2);
+                ctx.beginPath();
+                ctx.moveTo(arrowX, arrowY);
+                ctx.lineTo(wingX1, wingY1);
+                ctx.lineTo(wingX2, wingY2);
+                ctx.fillStyle = '#aaa';
+                ctx.fill();
             }
             function draw() {
                 var ctx = canvas.getContext('2d');
@@ -562,91 +660,163 @@
                 ctx.save();
                 ctx.translate(transform.offsetX, transform.offsetY);
                 ctx.scale(transform.scale, transform.scale);
-                ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5 / transform.scale;
-                for (var i = 0; i < edges.length; i++) {
-                    var e = edges[i];
-                    var fromPos = positions[e.from], toPos = positions[e.to];
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1.5 / transform.scale;
+                for (var ei = 0; ei < edges.length; ei++) {
+                    var edge = edges[ei];
+                    var fromPos = positions[edge.from];
+                    var toPos = positions[edge.to];
                     if (fromPos && toPos) drawArrow(ctx, fromPos, toPos, 22);
                 }
-                for (var i = 0; i < nodes.length; i++) {
-                    var node = nodes[i];
+                for (var ni = 0; ni < nodes.length; ni++) {
+                    var node = nodes[ni];
                     var pos = positions[node.id];
+                    var isHovered = hoveredNode === node.id;
+                    var nodeRadius = isHovered ? 26 : 22;
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 6;
                     ctx.beginPath();
                     ctx.fillStyle = node.enabled ? '#5cb85c' : '#d9534f';
-                    ctx.arc(pos.x, pos.y, 22, 0, 2*Math.PI);
+                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
                     ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.strokeStyle = isHovered ? '#ffd966' : '#333';
+                    ctx.lineWidth = 2 / transform.scale;
+                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
+                    ctx.stroke();
                     ctx.fillStyle = '#fff';
-                    ctx.font = '12px sans-serif';
+                    ctx.font = (12 / transform.scale) + 'px "Segoe UI", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    var label = node.label.length > 12 ? node.label.slice(0,10)+'…' : node.label;
-                    ctx.fillText(label, pos.x, pos.y);
+                    var displayName = node.label;
+                    if (displayName.length > 12) displayName = displayName.slice(0, 10) + '…';
+                    ctx.fillText(displayName, pos.x, pos.y);
                 }
                 ctx.restore();
-                zoomSpan.innerText = '缩放: ' + Math.round(transform.scale * 100) + '%';
+                zoomLevelSpan.innerText = '缩放: ' + Math.round(transform.scale * 100) + '%';
             }
             function animate() {
                 for (var i = 0; i < physicsIterations; i++) updatePhysics();
                 draw();
                 animationId = requestAnimationFrame(animate);
             }
-            function findNodeUnderMouse(sx, sy) {
-                var world = screenToWorld(sx, sy);
+            function findNodeUnderMouse(screenX, screenY) {
+                var world = screenToWorld(screenX, screenY);
                 for (var i = 0; i < nodes.length; i++) {
-                    var node = nodes[i], pos = positions[node.id];
-                    if (Math.hypot(world.x - pos.x, world.y - pos.y) <= 22) return node;
+                    var node = nodes[i];
+                    var pos = positions[node.id];
+                    var dx = world.x - pos.x;
+                    var dy = world.y - pos.y;
+                    if (Math.hypot(dx, dy) <= 22) return node;
                 }
                 return null;
             }
             function onMouseDown(e) {
                 var rect = canvas.getBoundingClientRect();
-                var mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-                var mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
-                if (e.button === 2) { e.preventDefault(); panning = true; panStart = { x: e.clientX, y: e.clientY }; canvas.style.cursor = 'grabbing'; return; }
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                var mouseX = (e.clientX - rect.left) * scaleX;
+                var mouseY = (e.clientY - rect.top) * scaleY;
+                if (e.button === 2) {
+                    e.preventDefault();
+                    panning = true;
+                    panStart = { x: e.clientX, y: e.clientY };
+                    canvas.style.cursor = 'grabbing';
+                    return;
+                }
                 var node = findNodeUnderMouse(mouseX, mouseY);
-                if (node) { dragging = true; dragNode = node; canvas.style.cursor = 'grabbing'; e.preventDefault(); }
+                if (node) {
+                    dragging = true;
+                    dragNode = node;
+                    canvas.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
             }
             function onMouseMove(e) {
                 var rect = canvas.getBoundingClientRect();
-                var mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-                var mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                var mouseX = (e.clientX - rect.left) * scaleX;
+                var mouseY = (e.clientY - rect.top) * scaleY;
                 if (panning) {
-                    var dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
-                    transform.offsetX += dx; transform.offsetY += dy;
+                    var dx = e.clientX - panStart.x;
+                    var dy = e.clientY - panStart.y;
+                    transform.offsetX += dx;
+                    transform.offsetY += dy;
                     panStart = { x: e.clientX, y: e.clientY };
-                    draw(); return;
+                    draw();
+                    return;
                 }
                 if (dragging && dragNode) {
-                    var world = screenToWorld(mouseX, mouseY);
-                    positions[dragNode.id] = world;
+                    var worldPos = screenToWorld(mouseX, mouseY);
+                    positions[dragNode.id] = worldPos;
                     velocity[dragNode.id] = { x: 0, y: 0 };
-                    draw(); return;
+                    draw();
+                    return;
+                }
+                var node = findNodeUnderMouse(mouseX, mouseY);
+                if (node) {
+                    if (hoveredNode !== node.id) {
+                        hoveredNode = node.id;
+                        canvas.style.cursor = 'pointer';
+                        draw();
+                        canvas.title = node.label + (node.enabled ? ' (已启用)' : ' (已禁用)');
+                    }
+                } else {
+                    if (hoveredNode !== null) {
+                        hoveredNode = null;
+                        canvas.style.cursor = 'grab';
+                        canvas.title = '';
+                        draw();
+                    }
                 }
             }
-            function onMouseUp() { dragging = false; dragNode = null; panning = false; canvas.style.cursor = 'grab'; }
+            function onMouseUp(e) {
+                if (dragging) { dragging = false; dragNode = null; canvas.style.cursor = 'grab'; }
+                if (panning) { panning = false; canvas.style.cursor = 'grab'; }
+            }
             function onWheel(e) {
                 e.preventDefault();
                 var rect = canvas.getBoundingClientRect();
-                var mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                var before = screenToWorld(mouseX, mouseY);
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                var worldBefore = screenToWorld(mouseX, mouseY);
                 var delta = e.deltaY > 0 ? 0.9 : 1.1;
-                transform.scale = Math.min(Math.max(transform.scale * delta, 0.3), 3);
-                var after = screenToWorld(mouseX, mouseY);
-                transform.offsetX += (after.x - before.x) * transform.scale;
-                transform.offsetY += (after.y - before.y) * transform.scale;
+                var newScale = transform.scale * delta;
+                newScale = Math.min(Math.max(newScale, 0.3), 3);
+                transform.scale = newScale;
+                var worldAfter = screenToWorld(mouseX, mouseY);
+                transform.offsetX += (worldAfter.x - worldBefore.x) * transform.scale;
+                transform.offsetY += (worldAfter.y - worldBefore.y) * transform.scale;
                 draw();
             }
-            function resetView() { transform.scale = 1; transform.offsetX = canvas.width/2; transform.offsetY = canvas.height/2; draw(); }
+            function resetView() {
+                transform.scale = 1;
+                transform.offsetX = canvas.width / 2;
+                transform.offsetY = canvas.height / 2;
+                draw();
+            }
             function zoomIn() { transform.scale = Math.min(transform.scale * 1.2, 3); draw(); }
             function zoomOut() { transform.scale = Math.max(transform.scale / 1.2, 0.3); draw(); }
-            function cleanup() { if (animationId) cancelAnimationFrame(animationId); canvas.removeEventListener('mousedown', onMouseDown); canvas.removeEventListener('mousemove', onMouseMove); canvas.removeEventListener('mouseup', onMouseUp); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('mouseup', onMouseUp); canvas.removeEventListener('contextmenu', function(e){e.preventDefault();}); }
+            function cleanup() {
+                if (animationId) cancelAnimationFrame(animationId);
+                canvas.removeEventListener('mousedown', onMouseDown);
+                canvas.removeEventListener('mousemove', onMouseMove);
+                canvas.removeEventListener('mouseup', onMouseUp);
+                canvas.removeEventListener('wheel', onWheel);
+                window.removeEventListener('mouseup', onMouseUp);
+                canvas.removeEventListener('contextmenu', function(e) { e.preventDefault(); });
+            }
             canvas.addEventListener('mousedown', onMouseDown);
             canvas.addEventListener('mousemove', onMouseMove);
             canvas.addEventListener('mouseup', onMouseUp);
             window.addEventListener('mouseup', onMouseUp);
             canvas.addEventListener('wheel', onWheel, { passive: false });
-            canvas.addEventListener('contextmenu', function(e){e.preventDefault();});
-            resetBtn.onclick = resetView; zoomInBtn.onclick = zoomIn; zoomOutBtn.onclick = zoomOut;
+            canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+            resetBtn.onclick = resetView;
+            zoomInBtn.onclick = zoomIn;
+            zoomOutBtn.onclick = zoomOut;
             closeBtn.onclick = function() { cleanup(); modal.remove(); };
             animate();
         });
@@ -692,8 +862,11 @@
                 input.type = f.type;
             }
             input.name = f.name;
-            if (f.name === 'adminList') input.value = JSON.stringify(config[f.name] || [], null, 2);
-            else input.value = config[f.name] !== undefined ? config[f.name] : '';
+            if (f.name === 'adminList') {
+                input.value = JSON.stringify(config[f.name] || [], null, 2);
+            } else {
+                input.value = config[f.name] !== undefined ? config[f.name] : '';
+            }
             div.appendChild(input);
             form.appendChild(div);
         }
@@ -722,21 +895,31 @@
                 var input = inputs[i];
                 var name = input.name;
                 var value = input.value;
-                if (name === 'adminList') { try { value = JSON.parse(value); } catch (e) { alert('管理员列表 JSON 格式错误'); return; } }
+                if (name === 'adminList') {
+                    try { value = JSON.parse(value); } catch (e) { alert('管理员列表 JSON 格式错误'); return; }
+                }
                 formData[name] = value;
             }
             config = formData;
         } else {
-            try { config = JSON.parse(document.getElementById('main-config-json').value); } catch (e) { alert('JSON 格式错误'); return; }
+            try {
+                config = JSON.parse(document.getElementById('main-config-json').value);
+            } catch (e) { alert('JSON 格式错误'); return; }
         }
-        httpPost('/api/config/main', config, function(err) { if (err) alert('保存失败: ' + err.message); else alert('主配置保存成功，请重启机器人生效'); });
+        httpPost('/api/config/main', config, function(err) {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('主配置保存成功，请重启机器人生效');
+        });
     }
 
     // ---------- 插件配置 ----------
     function buildPluginConfigForm(config, schema) {
         var form = document.getElementById('plugin-config-form');
         form.innerHTML = '';
-        if (!schema || Object.keys(schema).length === 0) { form.innerHTML = '<p>该插件无配置说明，请使用 JSON 模式编辑。</p>'; return; }
+        if (!schema || Object.keys(schema).length === 0) {
+            form.innerHTML = '<p>该插件无配置说明，请使用 JSON 模式编辑。</p>';
+            return;
+        }
         for (var field in schema) {
             var info = schema[field];
             var div = document.createElement('div');
@@ -745,9 +928,19 @@
             label.innerText = field;
             div.appendChild(label);
             var input;
-            if (info.type === 'boolean') { input = document.createElement('input'); input.type = 'checkbox'; input.checked = config[field] || false; }
-            else if (info.type === 'number') { input = document.createElement('input'); input.type = 'number'; input.value = config[field] !== undefined ? config[field] : ''; }
-            else { input = document.createElement('input'); input.type = 'text'; input.value = config[field] !== undefined ? config[field] : ''; }
+            if (info.type === 'boolean') {
+                input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = config[field] || false;
+            } else if (info.type === 'number') {
+                input = document.createElement('input');
+                input.type = 'number';
+                input.value = config[field] !== undefined ? config[field] : '';
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = config[field] !== undefined ? config[field] : '';
+            }
             input.name = field;
             div.appendChild(input);
             form.appendChild(div);
@@ -770,23 +963,36 @@
                 var form = document.getElementById('plugin-config-form');
                 var jsonArea = document.getElementById('plugin-config-json');
                 var schemaDiv = document.getElementById('plugin-schema-table');
-                if (!pluginName) { form.style.display = 'none'; jsonArea.style.display = 'none'; schemaDiv.innerHTML = ''; return; }
+                if (!pluginName) {
+                    form.style.display = 'none';
+                    jsonArea.style.display = 'none';
+                    schemaDiv.innerHTML = '';
+                    return;
+                }
                 httpGet('/api/config/plugin/' + pluginName, function(err, config) {
                     if (err) return console.error('获取插件配置失败', err);
                     httpGet('/api/plugin/schema/' + pluginName, function(err, schema) {
                         if (err) return console.error('获取插件 schema 失败', err);
-                        if (!schema || Object.keys(schema).length === 0) schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
-                        else {
+                        if (!schema || Object.keys(schema).length === 0) {
+                            schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
+                        } else {
                             var html = '<table style="width:100%; border-collapse:collapse; margin-bottom:1rem;">';
                             html += '<thead><tr><th>字段名</th><th>类型</th><th>说明</th></tr></thead><tbody>';
-                            for (var f in schema) html += '<tr><td><code>' + f + '</code></td><td>' + (schema[f].type || 'string') + '</td><td>' + (schema[f].description || '') + '</td></tr>';
+                            for (var f in schema) {
+                                html += '<tr><td><code>' + f + '</code></td><td>' + (schema[f].type || 'string') + '</td><td>' + (schema[f].description || '') + '</td></tr>';
+                            }
                             html += '</tbody></table>';
                             schemaDiv.innerHTML = html;
                         }
                         buildPluginConfigForm(config, schema);
                         jsonArea.value = JSON.stringify(config, null, 2);
-                        if (pluginConfigMode === 'form') { form.style.display = 'block'; jsonArea.style.display = 'none'; }
-                        else { form.style.display = 'none'; jsonArea.style.display = 'block'; }
+                        if (pluginConfigMode === 'form') {
+                            form.style.display = 'block';
+                            jsonArea.style.display = 'none';
+                        } else {
+                            form.style.display = 'none';
+                            jsonArea.style.display = 'block';
+                        }
                         form.setAttribute('data-plugin-name', pluginName);
                         jsonArea.setAttribute('data-plugin-name', pluginName);
                     });
@@ -813,21 +1019,28 @@
             }
             config = formData;
         } else {
-            try { config = JSON.parse(document.getElementById('plugin-config-json').value); } catch (e) { alert('JSON 格式错误'); return; }
+            try {
+                config = JSON.parse(document.getElementById('plugin-config-json').value);
+            } catch (e) { alert('JSON 格式错误'); return; }
         }
-        httpPost('/api/config/plugin/' + pluginName, config, function(err) { if (err) alert('保存失败: ' + err.message); else alert('插件配置保存成功，请重启机器人生效'); });
+        httpPost('/api/config/plugin/' + pluginName, config, function(err) {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('插件配置保存成功，请重启机器人生效');
+        });
     }
 
     function restartBot() {
         if (confirm('确定要重启机器人吗？')) {
             httpPost('/api/system/restart', {}, function(err) {
                 if (err) alert('重启请求失败: ' + err.message);
-                else { alert('机器人正在重启，请稍后...'); setTimeout(function() { window.location.reload(); }, 2000); }
+                else {
+                    alert('机器人正在重启，请稍后...');
+                    setTimeout(function() { window.location.reload(); }, 2000);
+                }
             });
         }
     }
 
-    // ---------- 图表 ----------
     function loadChart() {
         httpGet('/api/stats/online', function(err, data) {
             if (err) return console.error('获取统计数据失败', err);
@@ -843,7 +1056,6 @@
         });
     }
 
-    // ---------- 页面切换 ----------
     function showPage(pageName) {
         var pages = document.querySelectorAll('.page');
         for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
@@ -858,10 +1070,11 @@
         if (pageName === 'chart') loadChart();
     }
 
-    // ---------- 初始化 ----------
     function init() {
         var navBtns = document.querySelectorAll('nav button');
-        for (var i = 0; i < navBtns.length; i++) navBtns[i].onclick = function() { showPage(this.getAttribute('data-page')); };
+        for (var i = 0; i < navBtns.length; i++) {
+            navBtns[i].onclick = function() { showPage(this.getAttribute('data-page')); };
+        }
         document.getElementById('save-main-config').onclick = saveMainConfig;
         document.getElementById('save-plugin-config').onclick = savePluginConfig;
         document.getElementById('restart-btn').onclick = restartBot;
@@ -893,8 +1106,12 @@
         updateDashboard();
         showPage('dashboard');
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 </script>
 </body>
 </html>
