@@ -1,4 +1,3 @@
-以下是完整的 API.md 文件内容，适用于 GitHub 仓库。段落之间使用两个换行分隔。
 
 ```markdown
 # API 文档
