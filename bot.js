@@ -1,6 +1,6 @@
-// 蔷薇花园机器人 - 完整版
+// 蔷薇花园机器人
 // 首次启动请通过 Web 管理面板配置账号、密码等
-// 访问 http://服务器IP:8080 进行配置
+// 访问 http://服务器IP:8080 或 http://127.0.0.1:8080 进行配置
 
 const WebSocket = require('ws');
 const zlib = require('zlib');
