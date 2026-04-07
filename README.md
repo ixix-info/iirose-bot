@@ -150,7 +150,7 @@ module.exports.destroy = destroy;
 
 ## bot 实例 API
 
-详细 API 请参考 API 文档([![API.md](https://github.com/ixix-info/iirose-bot/blob/main/API.md])。
+详细 API 请参考 API 文档([![API.md](https://github.com/ixix-info/iirose-bot/blob/main/API.md)])。
 
 ## 注意事项
 
