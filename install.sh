@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# 颜色输出
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -100,23 +99,23 @@ if ! command -v git &> /dev/null; then
     install_git
 fi
 
-# 设置安装目录
+# 设置安装目录 (Termux 使用内部存储，避免权限问题)
 if [ "$OS" = "termux" ]; then
-    INSTALL_DIR="$HOME/storage/shared/iirose-bot"
-    mkdir -p "$INSTALL_DIR"
+    INSTALL_DIR="$HOME/iirose-bot"
 else
     INSTALL_DIR="$HOME/iirose-bot"
 fi
 
-if [ -d "$INSTALL_DIR/.git" ]; then
-    echo -e "${YELLOW}目录已存在，正在更新...${NC}"
-    cd "$INSTALL_DIR"
-    git pull
-else
-    echo -e "${YELLOW}正在克隆仓库...${NC}"
-    git clone https://github.com/ixix-info/iirose-bot.git "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+# 删除旧目录（如果存在）
+if [ -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}删除旧目录 $INSTALL_DIR ...${NC}"
+    rm -rf "$INSTALL_DIR"
 fi
+
+# 克隆仓库
+echo -e "${YELLOW}正在克隆仓库...${NC}"
+git clone https://github.com/ixix-info/iirose-bot.git "$INSTALL_DIR"
+cd "$INSTALL_DIR"
 
 # 安装依赖
 echo -e "${YELLOW}正在安装 Node.js 依赖...${NC}"
@@ -147,7 +146,6 @@ EOF
 
 # 下载 ECharts（用于 Web 图表）
 echo -e "${YELLOW}下载 ECharts 本地库...${NC}"
-mkdir -p webui
 curl -o webui/echarts.min.js https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js
 
 # 创建启动脚本
@@ -163,6 +161,7 @@ chmod +x start.sh
 
 # Termux 特殊处理：创建快捷启动文件
 if [ "$OS" = "termux" ]; then
+    mkdir -p "$HOME/.shortcuts"
     cat > "$HOME/.shortcuts/iirose-bot" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 cd "$INSTALL_DIR"
