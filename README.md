@@ -49,7 +49,7 @@ export WEB_PASSWORD=admin
 node bot.js
 ```
 
-##配置说明
+## 配置说明
 
 首次配置
 
@@ -58,7 +58,7 @@ node bot.js
 5. 填写机器人账号、密码、默认房间 ID（13位小写字母数字）
 6. 点击保存，然后点击 重启机器人
 
-##环境变量
+## 环境变量
 
 变量 说明 默认值
 
@@ -72,7 +72,7 @@ SESSION_SECRET Session 加密密钥 default-secret-change-me
 
 LOG_LEVEL 日志级别 info
 
-##配置文件
+## 配置文件
 
 · 主配置：data/config.json（机器人账号、房间、权限等）
 
@@ -80,7 +80,7 @@ LOG_LEVEL 日志级别 info
 
 · 插件配置：data/plugins/<插件名>/config.json
 
-##目录结构
+## 目录结构
 
 ```
 iirose-bot/
@@ -96,7 +96,7 @@ iirose-bot/
 └── install.sh             # 一键安装脚本
 ```
 
-##插件开发
+## 插件开发
 
 插件基本结构
 
@@ -119,7 +119,7 @@ module.exports.configSchema = {
 };
 ```
 
-热重载支持
+## 热重载支持
 
 插件若需要支持热重载，可导出 destroy 函数清理资源：
 
@@ -131,11 +131,11 @@ const destroy = () => {
 module.exports.destroy = destroy;
 ```
 
-bot 实例 API
+## bot 实例 API
 
 详细 API 请参考 API 文档(API.md)。
 
-##注意事项
+## 注意事项
 
 1. 账号安全
 
@@ -169,19 +169,19 @@ bot 实例 API
 
 · 定期更新：git pull 后重启机器人
 
-##常见问题
+## 常见问题
 
-问题 解决方法
+问题                    解决方法
 
 登录失败（用户名/密码错误） 检查 data/config.json 中的账号密码，用户名不要带 [* *]
 
-Web 面板无法访问 检查防火墙是否开放 8080 端口；确认 node bot.js 是否运行
+Web 面板无法访问          检查防火墙是否开放 8080 端口；确认 node bot.js 是否运行
 
-插件加载失败 查看控制台错误日志，手动安装缺失依赖
+插件加载失败              查看控制台错误日志，手动安装缺失依赖
 
-机器人不回复消息 确认已配置账号并重启；检查房间 ID 是否正确
+机器人不回复消息           确认已配置账号并重启；检查房间 ID 是否正确
 
-频繁断线重连 修改 WS_SERVERS 顺序，或增加 HEARTBEAT_INTERVAL
+频繁断线重连              修改 WS_SERVERS 顺序，或增加 HEARTBEAT_INTERVAL
 
 贡献
 
