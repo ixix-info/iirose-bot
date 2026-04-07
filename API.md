@@ -118,18 +118,18 @@
 }
 ```
 
-2. 编码器 encoder
+## 2. 编码器 encoder
 
 挂载在 bot.encoder，用于生成各种原始命令字符串。
 
-2.1 消息类
+## 2.1 消息类
 
 方法 返回值
 encoder.publicMessage(message, color) { messageId, data }
 
 encoder.privateMessage(uid, message, color) { messageId, data }
 
-2.2 音乐与媒体
+## 2.2 音乐与媒体
 
 方法 说明
 encoder.mediaCard(type, title, singer, cover, color, duration[, bitRate, origin]) 发送音乐卡片（点歌）
@@ -146,7 +146,7 @@ encoder.seekMedia(time) 跳转到指定时间（"mm:ss" 或秒数）
 
 encoder.mediaOperation(operation, time) 快进/快退（'<' 或 '>'）
 
-2.3 用户交互
+## 2.3 用户交互
 
 方法 说明
 
@@ -165,7 +165,7 @@ encoder.gradeUser(uid, score) 为用户评分
 encoder.cancelGradeUser(uid) 取消评分
 
 
-2.4 经济系统
+## 2.4 经济系统
 
 方法 说明
 encoder.bankGet() 查询银行
@@ -182,7 +182,7 @@ encoder.stockSell(quantity) 卖股票
 
 encoder.getBalance() 查询余额
 
-2.5 管理命令
+## 2.5 管理命令
 
 方法 说明
 
@@ -198,7 +198,7 @@ encoder.deleteMessage(channelId, messageId) 撤回消息
 
 encoder.broadcast(message, color) 全站广播
 
-2.6 其他
+## 2.6 其他
 
 方法 说明
 
@@ -240,11 +240,11 @@ encoder.getFollowList(uid) 获取关注/粉丝列表
 
 encoder.updateSelfInfo(profileData) 更新个人信息
 
-3. Web 仪表盘 HTTP API
+## 3. Web 仪表盘 HTTP API
 
 默认监听 8080 端口（环境变量 WEBUI_PORT 可修改）。所有 API 返回 JSON。
 
-3.1 状态与日志
+## 3.1 状态与日志
 
 方法 路径 说明
 
@@ -254,7 +254,7 @@ GET /api/logs?limit=20 获取最近日志（默认 20 条）
 
 GET /api/stats/online 获取在线人数历史数据（用于图表）
 
-3.2 插件管理
+## 3.2 插件管理
 
 方法 路径 说明
 
@@ -272,7 +272,7 @@ POST /api/plugin/reload/:pluginName 热重载插件（需插件实现 destroy）
 
 POST /api/plugin/reload-config/:pluginName 热重载插件配置
 
-3.3 配置管理
+## 3.3 配置管理
 
 方法 路径 说明
 
@@ -284,13 +284,13 @@ GET /api/config/plugin/:pluginName 获取插件配置
 
 POST /api/config/plugin/:pluginName 保存插件配置
 
-3.4 系统操作
+f# 3.4 系统操作
 
 方法 路径 说明
 
 POST /api/system/restart 重启机器人（1 秒后退出进程）
 
-3.5 登录认证
+## 3.5 登录认证
 
 方法 路径 说明
 
@@ -298,7 +298,7 @@ POST /api/login 登录（用户名密码，返回 { success }）
 
 GET /api/logout 登出，销毁 session
 
-4. 插件元数据规范
+## 4. 插件元数据规范
 
 插件应导出以下属性（可选但推荐）：
 
@@ -320,7 +320,7 @@ module.exports.configSchema = {
 };
 ```
 
-5. 注意事项
+## 5. 注意事项
 
 · 所有异步方法返回 Promise，可使用 await。
 · 机器人未登录时（bot.loggedIn === false），部分功能不可用，建议监听 'login' 事件。
