@@ -27,7 +27,7 @@ cd ~/iirose-bot
 
 首次启动会提示配置账号密码，请访问 http://你的服务器IP:8080 进行配置。
 
-手动安装
+##手动安装
 
 如果一键脚本不适用，可以手动安装：
 
@@ -49,7 +49,7 @@ export WEB_PASSWORD=admin
 node bot.js
 ```
 
-配置说明
+##配置说明
 
 首次配置
 
@@ -58,7 +58,7 @@ node bot.js
 5. 填写机器人账号、密码、默认房间 ID（13位小写字母数字）
 6. 点击保存，然后点击 重启机器人
 
-环境变量
+##环境变量
 
 变量 说明 默认值
 
@@ -72,7 +72,7 @@ SESSION_SECRET Session 加密密钥 default-secret-change-me
 
 LOG_LEVEL 日志级别 info
 
-配置文件
+##配置文件
 
 · 主配置：data/config.json（机器人账号、房间、权限等）
 
@@ -80,7 +80,7 @@ LOG_LEVEL 日志级别 info
 
 · 插件配置：data/plugins/<插件名>/config.json
 
-目录结构
+##目录结构
 
 ```
 iirose-bot/
@@ -96,7 +96,7 @@ iirose-bot/
 └── install.sh             # 一键安装脚本
 ```
 
-插件开发
+##插件开发
 
 插件基本结构
 
@@ -135,7 +135,7 @@ bot 实例 API
 
 详细 API 请参考 API 文档(API.md)。
 
-注意事项
+##注意事项
 
 1. 账号安全
 
@@ -169,7 +169,7 @@ bot 实例 API
 
 · 定期更新：git pull 后重启机器人
 
-常见问题
+##常见问题
 
 问题 解决方法
 
