@@ -199,6 +199,8 @@ Web 面板无法访问          检查防火墙是否开放 8080 端口；确认
 
 频繁断线重连              修改 WS_SERVERS 顺序，或增加 HEARTBEAT_INTERVAL
 
+未介绍的bug               前往本仓库的bugfeedback.txt检查和提交
+
 贡献
 
 欢迎提交 Issue 和 Pull Request。本项目使用 GPL v3.0 许可证，任何贡献都将以相同许可证授权。
