@@ -126,72 +126,118 @@
 
 方法 返回值
 encoder.publicMessage(message, color) { messageId, data }
+
 encoder.privateMessage(uid, message, color) { messageId, data }
 
 2.2 音乐与媒体
 
 方法 说明
 encoder.mediaCard(type, title, singer, cover, color, duration[, bitRate, origin]) 发送音乐卡片（点歌）
+
 encoder.mediaData(type, title, singer, cover, url, duration[, lyrics, origin]) 发送歌曲数据（配合卡片使用）
+
 encoder.cutOne([id]) 切歌（指定 id 则切到该媒体）
+
 encoder.cutAll() 清空媒体队列
+
 encoder.exchangeMedia(id1, id2) 交换两个媒体的位置
+
 encoder.seekMedia(time) 跳转到指定时间（"mm:ss" 或秒数）
+
 encoder.mediaOperation(operation, time) 快进/快退（'<' 或 '>'）
 
 2.3 用户交互
 
 方法 说明
+
 encoder.like(uid[, message]) 点赞
+
 encoder.dislike(uid[, message]) 点踩
+
 encoder.follow(uid) 关注
+
 encoder.unfollow(uid) 取消关注
+
 encoder.payment(uid, money[, message]) 打赏
-encoder.gradeUser(uid, score) 为用户评分（好感度）
+
+encoder.gradeUser(uid, score) 为用户评分
+
 encoder.cancelGradeUser(uid) 取消评分
+
 
 2.4 经济系统
 
 方法 说明
 encoder.bankGet() 查询银行
+
 encoder.bankDeposit(amount) 存款
+
 encoder.bankWithdraw(amount) 取款
+
 encoder.stockGet() 查询股票
+
 encoder.stockBuy(quantity) 买股票
+
 encoder.stockSell(quantity) 卖股票
+
 encoder.getBalance() 查询余额
 
 2.5 管理命令
 
 方法 说明
+
 encoder.kick(username) 踢出用户
+
 encoder.mute(type, username, time[, reason]) 禁言（type 为 'chat', 'music', 'all'）
+
 encoder.blacklist(username, time[, reason]) 加入黑名单
+
 encoder.setMaxUser([num]) 设置房间最大人数
+
 encoder.deleteMessage(channelId, messageId) 撤回消息
+
 encoder.broadcast(message, color) 全站广播
 
 2.6 其他
 
 方法 说明
+
 encoder.getUserProfileByName(username) 获取用户资料（通过名字）
+
 encoder.getSelfInfo() 获取自身信息
+
 encoder.getMusicList() 获取歌单
+
 encoder.getForum() 获取论坛
+
 encoder.getTasks() 获取任务
+
 encoder.getMoments() 获取朋友圈
+
 encoder.getLeaderboard() 获取排行榜
+
 encoder.getStore() 获取商店
+
 encoder.getSellerCenter() 获取卖家中心
+
 encoder.addToCart(itemId) 加入购物车
+
 encoder.removeFromCart(itemId) 移除购物车
+
 encoder.getFavorites() 获取收藏夹
+
 encoder.getFollowedStores() 获取关注店铺
+
 encoder.subscribeRoom(roomId) 订阅房间
+
 encoder.unsubscribeRoom(roomId) 取消订阅房间
+
 encoder.summonDice(diceId) 掷骰子（0-7）
+
 encoder.getUserMomentsByUid(uid) 获取用户动态
+
 encoder.getFollowList(uid) 获取关注/粉丝列表
+
 encoder.updateSelfInfo(profileData) 更新个人信息
 
 3. Web 仪表盘 HTTP API
@@ -201,38 +247,55 @@ encoder.updateSelfInfo(profileData) 更新个人信息
 3.1 状态与日志
 
 方法 路径 说明
+
 GET /api/status 获取机器人状态（在线、房间、运行时间等）
+
 GET /api/logs?limit=20 获取最近日志（默认 20 条）
+
 GET /api/stats/online 获取在线人数历史数据（用于图表）
 
 3.2 插件管理
 
 方法 路径 说明
+
 GET /api/plugins 获取插件命令数量概览
+
 GET /api/plugins/detail 获取插件详细信息（描述、依赖、启用状态）
+
 GET /api/plugins/deps-graph 获取插件依赖图数据（nodes, edges）
+
 GET /api/plugin/schema/:pluginName 获取插件配置字段说明
+
 POST /api/plugin/toggle 启用/禁用插件（热切换，无需重启）
+
 POST /api/plugin/reload/:pluginName 热重载插件（需插件实现 destroy）
+
 POST /api/plugin/reload-config/:pluginName 热重载插件配置
 
 3.3 配置管理
 
 方法 路径 说明
+
 GET /api/config/main 获取主配置
+
 POST /api/config/main 保存主配置
+
 GET /api/config/plugin/:pluginName 获取插件配置
+
 POST /api/config/plugin/:pluginName 保存插件配置
 
 3.4 系统操作
 
 方法 路径 说明
+
 POST /api/system/restart 重启机器人（1 秒后退出进程）
 
 3.5 登录认证
 
 方法 路径 说明
+
 POST /api/login 登录（用户名密码，返回 { success }）
+
 GET /api/logout 登出，销毁 session
 
 4. 插件元数据规范
