@@ -200,7 +200,7 @@ Web 面板无法访问          检查防火墙是否开放 8080 端口；确认
 
 频繁断线重连              修改 WS_SERVERS 顺序，或增加 HEARTBEAT_INTERVAL
 
-未介绍的bug,问题               前往本仓库的[！[bugfeedback.txt](检查和提交
+未介绍的bug,问题               前往本仓库的[！[bugfeedback.txt](https://github.com/ixix-info/iirose-bot/edit/main/bugfeedback.md检查和提交
 
 贡献
 
