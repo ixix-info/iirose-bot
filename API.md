@@ -116,7 +116,7 @@
     isMove: true,          // true 表示移动到其他房间
     targetRoomId: 'roomId' // 移动目标房间
 }
-
+```
 
 2. 编码器 encoder
 
