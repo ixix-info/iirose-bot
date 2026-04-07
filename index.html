@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>机器人管理面板</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        nav {
+            background-color: #34495e;
+            display: flex;
+            gap: 0.5rem;
+            padding: 0 2rem;
+        }
+        nav button {
+            background: none;
+            border: none;
+            color: #ecf0f1;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        nav button:hover {
+            background-color: #2c3e50;
+        }
+        nav button.active {
+            border-bottom-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        main {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .card h2 {
+            margin-top: 0;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .status-item {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+        .status-item strong {
+            display: inline-block;
+            width: 100px;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .config-row {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .config-row label {
+            width: 150px;
+            font-weight: bold;
+            padding-top: 0.5rem;
+        }
+        .config-row input, .config-row select, .config-row textarea {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.danger {
+            background-color: #e74c3c;
+        }
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        .mode-switch {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .mode-switch button {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .mode-switch button.active {
+            background-color: #3498db;
+            color: white;
+        }
+        textarea, pre {
+            font-family: monospace;
+        }
+        .logs-box {
+            background: #1e1e2f;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .flex-btns {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        @media (max-width: 700px) {
+            .config-row label {
+                width: 100%;
+                margin-bottom: 0.3rem;
+            }
+            nav button {
+                padding: 0.5rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <header>
+        <h1>机器人管理面板</h1>
+    </header>
+    <nav>
+        <button data-page="dashboard" class="active">仪表盘</button>
+        <button data-page="plugins">插件管理</button>
+        <button data-page="config">配置中心</button>
+    </nav>
+    <main>
+        <!-- 仪表盘页面 -->
+        <div id="dashboard-view" class="page active">
+            <div class="card">
+                <h2>机器人状态</h2>
+                <div class="status-grid">
+                    <div class="status-item"><strong>状态:</strong> <span id="online-status">--</span></div>
+                    <div class="status-item"><strong>运行时间:</strong> <span id="uptime">--</span></div>
+                    <div class="status-item"><strong>当前用户:</strong> <span id="username">--</span></div>
+                    <div class="status-item"><strong>当前房间:</strong> <span id="current-room">--</span></div>
+                    <div class="status-item"><strong>消息颜色:</strong> <span id="color-preview" class="color-preview"></span><span id="color-value">--</span></div>
+                    <div class="status-item"><strong>签名:</strong> <span id="signature">--</span></div>
+                    <div class="status-item"><strong>主人:</strong> <span id="owner">--</span></div>
+                    <div class="status-item"><strong>管理员:</strong> <span id="admins">--</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>已加载插件</h2>
+                <table id="plugins-table">
+                    <thead>
+                        <tr><th>插件名</th><th>命令数量</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h2>实时日志</h2>
+                <div id="logs" class="logs-box">暂无日志</div>
+            </div>
+        </div>
+
+        <!-- 插件管理页面 -->
+        <div id="plugins-view" class="page">
+            <div class="card">
+                <div class="flex-btns" style="justify-content: space-between;">
+                    <h2>插件详情 & 管理</h2>
+                    <button id="dep-graph-btn">显示依赖图</button>
+                </div>
+                <table id="plugins-detail-table">
+                    <thead>
+                        <tr><th>名称</th><th>描述</th><th>命令数</th><th>依赖</th><th>状态</th><th>操作</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="flex-btns">
+                    <button id="restart-btn" class="danger">重启机器人</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置中心页面 -->
+        <div id="config-view" class="page">
+            <div class="card">
+                <h2>主配置 (config.yaml)</h2>
+                <div class="mode-switch">
+                    <button data-mode="form" class="active">表单模式</button>
+                    <button data-mode="json">JSON 模式</button>
+                </div>
+                <div id="main-config-form"></div>
+                <textarea id="main-config-json" rows="12" style="width:100%; display:none; font-family:monospace;"></textarea>
+                <div class="flex-btns">
+                    <button id="save-main-config">保存主配置</button>
+                </div>
+            </div>
+            <div class="card">
+                <h2>插件配置</h2>
+                <div>
+                    <label>选择插件：</label>
+                    <select id="plugin-select" style="width: 250px; padding: 0.4rem;"></select>
+                </div>
+                <div class="mode-switch" style="margin-top: 1rem;">
+                    <button data-plugin-mode="form" class="active">表单模式</button>
+                    <button data-plugin-mode="json">JSON 模式</button>
+                </div>
+                <div id="plugin-schema-table" style="background: #f9f9f9; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;"></div>
+                <div id="plugin-config-form"></div>
+                <textarea id="plugin-config-json" rows="12" style="width:100%; display:none; font-family:monospace;"></textarea>
+                <div class="flex-btns">
+                    <button id="save-plugin-config">保存插件配置</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // ---------- 全局变量 ----------
+    var currentPage = 'dashboard';
+    var mainConfigMode = 'form';
+    var pluginConfigMode = 'form';
+    var ws = null;
+
+    // ---------- HTTP 工具 ----------
+    function httpGet(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        callback(null, data);
+                    } catch (e) {
+                        callback(e, null);
+                    }
+                } else {
+                    callback(new Error('HTTP ' + xhr.status), null);
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    function httpPost(url, data, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        callback(null, res);
+                    } catch (e) {
+                        callback(e, null);
+                    }
+                } else {
+                    callback(new Error('HTTP ' + xhr.status), null);
+                }
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+
+    // ---------- WebSocket 日志 ----------
+    function connectWebSocket() {
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(protocol + '//' + window.location.host);
+        ws.onmessage = function(event) {
+            var log = JSON.parse(event.data);
+            var logContainer = document.getElementById('logs');
+            var currentText = logContainer.innerText;
+            logContainer.innerText = '[' + log.time + '] ' + log.message + '\n' + currentText;
+            var lines = logContainer.innerText.split('\n');
+            if (lines.length > 100) {
+                logContainer.innerText = lines.slice(0, 100).join('\n');
+            }
+        };
+        ws.onclose = function() {
+            setTimeout(connectWebSocket, 3000);
+        };
+    }
+
+    // ---------- 仪表盘更新 ----------
+    function updateDashboard() {
+        httpGet('/api/status', function(err, status) {
+            if (err) return console.error('获取状态失败', err);
+            document.getElementById('online-status').innerText = status.online ? '在线' : '离线';
+            document.getElementById('uptime').innerText = '运行时间: ' + status.uptime;
+            document.getElementById('username').innerText = status.username;
+            document.getElementById('current-room').innerText = status.currentRoom;
+            var colorPreview = document.getElementById('color-preview');
+            colorPreview.style.backgroundColor = '#' + status.color;
+            document.getElementById('color-value').innerText = '#' + status.color;
+            document.getElementById('signature').innerText = status.signature || '无';
+            var ownerText = status.ownerName ? status.ownerName + ' (' + status.ownerUid + ')' : '未配置';
+            document.getElementById('owner').innerText = ownerText;
+            var admins = status.adminList.map(function(admin) { return admin.name || admin.uid; }).join(', ') || '无';
+            document.getElementById('admins').innerText = admins;
+        });
+        httpGet('/api/plugins', function(err, plugins) {
+            if (err) return console.error('获取插件列表失败', err);
+            var tbody = document.querySelector('#plugins-table tbody');
+            tbody.innerHTML = '';
+            for (var i = 0; i < plugins.length; i++) {
+                var p = plugins[i];
+                var row = tbody.insertRow();
+                row.insertCell(0).innerText = p.name;
+                row.insertCell(1).innerText = p.commandCount;
+            }
+        });
+        httpGet('/api/logs?limit=30', function(err, logs) {
+            if (err) return console.error('获取日志失败', err);
+            var logText = '';
+            for (var i = 0; i < logs.length; i++) {
+                logText += '[' + logs[i].time + '] ' + logs[i].message + '\n';
+            }
+            document.getElementById('logs').innerText = logText || '暂无日志';
+        });
+    }
+
+    // ---------- 插件详情表格 ----------
+    function loadPluginsDetail() {
+        httpGet('/api/plugins/detail', function(err, plugins) {
+            if (err) return console.error('获取插件详情失败', err);
+            var tbody = document.querySelector('#plugins-detail-table tbody');
+            tbody.innerHTML = '';
+            for (var i = 0; i < plugins.length; i++) {
+                var p = plugins[i];
+                var row = tbody.insertRow();
+                row.insertCell(0).innerText = p.name;
+                row.insertCell(1).innerText = p.description || '无';
+                row.insertCell(2).innerText = p.commandCount;
+                row.insertCell(3).innerText = p.dependencies.join(', ') || '无';
+                var statusCell = row.insertCell(4);
+                var toggle = document.createElement('button');
+                toggle.innerText = p.enabled ? '禁用' : '启用';
+                toggle.style.cursor = 'pointer';
+                toggle.style.padding = '2px 5px';
+                toggle.style.border = '1px solid #ccc';
+                toggle.style.backgroundColor = p.enabled ? '#dc3545' : '#28a745';
+                toggle.style.color = 'white';
+                toggle.onclick = (function(pluginName, currentEnabled) {
+                    return function() {
+                        httpPost('/api/plugin/enable', { pluginName: pluginName, enabled: !currentEnabled }, function(err) {
+                            if (err) alert('操作失败: ' + err.message);
+                            else {
+                                alert('插件 ' + pluginName + ' 已' + (!currentEnabled ? '启用' : '禁用') + '，请重启机器人生效。');
+                                loadPluginsDetail();
+                            }
+                        });
+                    };
+                })(p.name, p.enabled);
+                statusCell.appendChild(toggle);
+                var actionCell = row.insertCell(5);
+                var reloadBtn = document.createElement('button');
+                reloadBtn.innerText = '重载';
+                reloadBtn.style.marginRight = '5px';
+                reloadBtn.onclick = (function(pluginName) {
+                    return function() {
+                        if (confirm('确定要热重载插件 ' + pluginName + ' 吗？')) {
+                            httpPost('/api/plugin/reload/' + pluginName, {}, function(err) {
+                                if (err) alert('重载失败: ' + err.message);
+                                else {
+                                    alert('插件 ' + pluginName + ' 已重载');
+                                    loadPluginsDetail();
+                                }
+                            });
+                        }
+                    };
+                })(p.name);
+                actionCell.appendChild(reloadBtn);
+                var restartBtn = document.createElement('button');
+                restartBtn.innerText = '重启';
+                restartBtn.onclick = function() { document.getElementById('restart-btn').click(); };
+                actionCell.appendChild(restartBtn);
+            }
+        });
+    }
+
+    // 手动实现 Math.hypot（ES5 兼容）
+    function hypot(dx, dy) {
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // ---------- 依赖图（优化版，ES5 适配）----------
+    function loadDependencyGraph() {
+        var loadingDiv = document.createElement('div');
+        loadingDiv.innerText = '加载依赖图中...';
+        loadingDiv.style.position = 'fixed';
+        loadingDiv.style.top = '50%';
+        loadingDiv.style.left = '50%';
+        loadingDiv.style.transform = 'translate(-50%, -50%)';
+        loadingDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        loadingDiv.style.color = 'white';
+        loadingDiv.style.padding = '10px 20px';
+        loadingDiv.style.borderRadius = '5px';
+        loadingDiv.style.zIndex = 1001;
+        document.body.appendChild(loadingDiv);
+
+        httpGet('/api/plugins/deps-graph', function(err, data) {
+            if (err) {
+                console.error('获取依赖图失败', err);
+                loadingDiv.remove();
+                alert('获取依赖图失败: ' + err.message);
+                return;
+            }
+            loadingDiv.remove();
+
+            var nodes = data.nodes;
+            var edges = data.edges;
+            if (!nodes || nodes.length === 0) {
+                alert('无插件数据');
+                return;
+            }
+
+            // 创建模态框
+            var modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.style.zIndex = 1000;
+            modal.style.display = 'flex';
+            modal.style.flexDirection = 'column';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+
+            var canvas = document.createElement('canvas');
+            canvas.width = 900;
+            canvas.height = 700;
+            canvas.style.backgroundColor = '#1e1e2f';
+            canvas.style.border = '1px solid #444';
+            canvas.style.borderRadius = '8px';
+            canvas.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+            canvas.style.cursor = 'grab';
+
+            // 控制栏
+            var toolbar = document.createElement('div');
+            toolbar.style.marginBottom = '10px';
+            toolbar.style.display = 'flex';
+            toolbar.style.gap = '10px';
+
+            var resetBtn = document.createElement('button');
+            resetBtn.innerText = '重置视图';
+            resetBtn.style.padding = '5px 12px';
+            resetBtn.style.cursor = 'pointer';
+
+            var zoomInBtn = document.createElement('button');
+            zoomInBtn.innerText = '放大';
+            zoomInBtn.style.padding = '5px 12px';
+            zoomInBtn.style.cursor = 'pointer';
+
+            var zoomOutBtn = document.createElement('button');
+            zoomOutBtn.innerText = '缩小';
+            zoomOutBtn.style.padding = '5px 12px';
+            zoomOutBtn.style.cursor = 'pointer';
+
+            var zoomLevelSpan = document.createElement('span');
+            zoomLevelSpan.style.color = 'white';
+            zoomLevelSpan.style.marginLeft = '10px';
+            zoomLevelSpan.innerText = '缩放: 100%';
+
+            toolbar.appendChild(resetBtn);
+            toolbar.appendChild(zoomInBtn);
+            toolbar.appendChild(zoomOutBtn);
+            toolbar.appendChild(zoomLevelSpan);
+
+            var closeBtn = document.createElement('button');
+            closeBtn.innerText = '关闭';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.top = '20px';
+            closeBtn.style.right = '20px';
+            closeBtn.style.padding = '6px 12px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.backgroundColor = '#dc3545';
+            closeBtn.style.color = 'white';
+            closeBtn.style.border = 'none';
+            closeBtn.style.borderRadius = '4px';
+
+            modal.appendChild(toolbar);
+            modal.appendChild(canvas);
+            modal.appendChild(closeBtn);
+            document.body.appendChild(modal);
+
+            // 坐标变换参数
+            var transform = {
+                scale: 1,
+                offsetX: canvas.width / 2,
+                offsetY: canvas.height / 2
+            };
+
+            // 节点位置和速度
+            var positions = {};
+            var velocity = {};
+
+            // 初始化节点位置（圆形布局）
+            var radius = Math.min(canvas.width, canvas.height) * 0.35;
+            var angleStep = (2 * Math.PI) / nodes.length;
+            for (var idx = 0; idx < nodes.length; idx++) {
+                var node = nodes[idx];
+                var angle = idx * angleStep;
+                positions[node.id] = {
+                    x: canvas.width/2 + radius * Math.cos(angle),
+                    y: canvas.height/2 + radius * Math.sin(angle)
+                };
+                velocity[node.id] = { x: 0, y: 0 };
+            }
+
+            // 力导向参数
+            var springLength = 180;
+            var springStrength = 0.03;
+            var repulsionStrength = nodes.length > 30 ? 2500 : 4000;
+            var damping = 0.92;
+            var centerStrength = 0.008;
+            var physicsIterations = nodes.length > 40 ? 10 : 20;
+
+            // 交互状态
+            var dragging = false;
+            var dragNode = null;
+            var panning = false;
+            var panStart = { x: 0, y: 0 };
+            var animationId = null;
+            var hoveredNode = null;
+
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: (screenX - transform.offsetX) / transform.scale,
+                    y: (screenY - transform.offsetY) / transform.scale
+                };
+            }
+
+            function worldToScreen(worldX, worldY) {
+                return {
+                    x: worldX * transform.scale + transform.offsetX,
+                    y: worldY * transform.scale + transform.offsetY
+                };
+            }
+
+            function updatePhysics() {
+                for (var i = 0; i < nodes.length; i++) {
+                    var node = nodes[i];
+                    var fx = 0, fy = 0;
+                    var pos = positions[node.id];
+                    for (var j = 0; j < nodes.length; j++) {
+                        var other = nodes[j];
+                        if (other.id === node.id) continue;
+                        var otherPos = positions[other.id];
+                        var dx = pos.x - otherPos.x;
+                        var dy = pos.y - otherPos.y;
+                        var dist = hypot(dx, dy) + 1;
+                        var force = repulsionStrength / (dist * dist);
+                        fx += (dx / dist) * force;
+                        fy += (dy / dist) * force;
+                    }
+                    for (var k = 0; k < edges.length; k++) {
+                        var edge = edges[k];
+                        if (edge.from === node.id) {
+                            var target = positions[edge.to];
+                            var dx = pos.x - target.x;
+                            var dy = pos.y - target.y;
+                            var dist = hypot(dx, dy);
+                            var force = (dist - springLength) * springStrength;
+                            fx -= (dx / (dist + 0.001)) * force;
+                            fy -= (dy / (dist + 0.001)) * force;
+                        } else if (edge.to === node.id) {
+                            var source = positions[edge.from];
+                            var dx = pos.x - source.x;
+                            var dy = pos.y - source.y;
+                            var dist = hypot(dx, dy);
+                            var force = (dist - springLength) * springStrength;
+                            fx -= (dx / (dist + 0.001)) * force;
+                            fy -= (dy / (dist + 0.001)) * force;
+                        }
+                    }
+                    fx -= pos.x * centerStrength;
+                    fy -= pos.y * centerStrength;
+                    velocity[node.id].x = (velocity[node.id].x + fx) * damping;
+                    velocity[node.id].y = (velocity[node.id].y + fy) * damping;
+                }
+                for (var i = 0; i < nodes.length; i++) {
+                    var node = nodes[i];
+                    positions[node.id].x += velocity[node.id].x;
+                    positions[node.id].y += velocity[node.id].y;
+                    var margin = 50;
+                    positions[node.id].x = Math.min(Math.max(positions[node.id].x, margin), canvas.width - margin);
+                    positions[node.id].y = Math.min(Math.max(positions[node.id].y, margin), canvas.height - margin);
+                }
+            }
+
+            function getCircleIntersection(x1, y1, x2, y2, cx, cy, r) {
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+                var fx = x1 - cx;
+                var fy = y1 - cy;
+                var a = dx * dx + dy * dy;
+                if (a === 0) return { x: x1, y: y1 };
+                var b = 2 * (fx * dx + fy * dy);
+                var c = (fx * fx + fy * fy) - r * r;
+                var d = b * b - 4 * a * c;
+                if (d < 0) return { x: x2, y: y2 };
+                d = Math.sqrt(d);
+                var t1 = (-b - d) / (2 * a);
+                var t2 = (-b + d) / (2 * a);
+                var t = t1 < t2 ? t1 : t2;
+                if (t < 0 || t > 1) t = (t1 > t2 ? t1 : t2);
+                if (t < 0 || t > 1) return { x: x2, y: y2 };
+                return { x: x1 + t * dx, y: y1 + t * dy };
+            }
+
+            function drawArrow(ctx, from, to, nodeRadius) {
+                var start = getCircleIntersection(from.x, from.y, to.x, to.y, from.x, from.y, nodeRadius);
+                var end = getCircleIntersection(to.x, to.y, from.x, from.y, to.x, to.y, nodeRadius);
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                var angle = Math.atan2(end.y - start.y, end.x - start.x);
+                var arrowSize = 10;
+                var arrowX = end.x;
+                var arrowY = end.y;
+                var angle1 = angle + Math.PI / 6;
+                var angle2 = angle - Math.PI / 6;
+                var wingX1 = arrowX - arrowSize * Math.cos(angle1);
+                var wingY1 = arrowY - arrowSize * Math.sin(angle1);
+                var wingX2 = arrowX - arrowSize * Math.cos(angle2);
+                var wingY2 = arrowY - arrowSize * Math.sin(angle2);
+                ctx.beginPath();
+                ctx.moveTo(arrowX, arrowY);
+                ctx.lineTo(wingX1, wingY1);
+                ctx.lineTo(wingX2, wingY2);
+                ctx.fillStyle = '#aaa';
+                ctx.fill();
+            }
+
+            function draw() {
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(transform.offsetX, transform.offsetY);
+                ctx.scale(transform.scale, transform.scale);
+
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1.5 / transform.scale;
+                for (var e = 0; e < edges.length; e++) {
+                    var edge = edges[e];
+                    var fromPos = positions[edge.from];
+                    var toPos = positions[edge.to];
+                    if (fromPos && toPos) {
+                        drawArrow(ctx, fromPos, toPos, 22);
+                    }
+                }
+
+                for (var n = 0; n < nodes.length; n++) {
+                    var node = nodes[n];
+                    var pos = positions[node.id];
+                    var isHovered = hoveredNode === node.id;
+                    var nodeRadius = isHovered ? 26 : 22;
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 6;
+                    ctx.beginPath();
+                    ctx.fillStyle = node.enabled ? '#5cb85c' : '#d9534f';
+                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.strokeStyle = isHovered ? '#ffd966' : '#333';
+                    ctx.lineWidth = 2 / transform.scale;
+                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = (12 / transform.scale) + 'px "Segoe UI", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    var displayName = node.label;
+                    if (displayName.length > 12) displayName = displayName.slice(0, 10) + '…';
+                    ctx.fillText(displayName, pos.x, pos.y);
+                }
+                ctx.restore();
+                zoomLevelSpan.innerText = '缩放: ' + Math.round(transform.scale * 100) + '%';
+            }
+
+            function animate() {
+                for (var iter = 0; iter < physicsIterations; iter++) updatePhysics();
+                draw();
+                animationId = requestAnimationFrame(animate);
+            }
+
+            function findNodeUnderMouse(screenX, screenY) {
+                var world = screenToWorld(screenX, screenY);
+                for (var i = 0; i < nodes.length; i++) {
+                    var node = nodes[i];
+                    var pos = positions[node.id];
+                    var dx = world.x - pos.x;
+                    var dy = world.y - pos.y;
+                    if (hypot(dx, dy) <= 22) return node;
+                }
+                return null;
+            }
+
+            function onMouseDown(e) {
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                var mouseX = (e.clientX - rect.left) * scaleX;
+                var mouseY = (e.clientY - rect.top) * scaleY;
+                if (e.button === 2) {
+                    e.preventDefault();
+                    panning = true;
+                    panStart = { x: e.clientX, y: e.clientY };
+                    canvas.style.cursor = 'grabbing';
+                    return;
+                }
+                var node = findNodeUnderMouse(mouseX, mouseY);
+                if (node) {
+                    dragging = true;
+                    dragNode = node;
+                    canvas.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            }
+
+            function onMouseMove(e) {
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                var mouseX = (e.clientX - rect.left) * scaleX;
+                var mouseY = (e.clientY - rect.top) * scaleY;
+                if (panning) {
+                    var dx = e.clientX - panStart.x;
+                    var dy = e.clientY - panStart.y;
+                    transform.offsetX += dx;
+                    transform.offsetY += dy;
+                    panStart = { x: e.clientX, y: e.clientY };
+                    draw();
+                    return;
+                }
+                if (dragging && dragNode) {
+                    var worldPos = screenToWorld(mouseX, mouseY);
+                    positions[dragNode.id] = worldPos;
+                    velocity[dragNode.id] = { x: 0, y: 0 };
+                    draw();
+                    return;
+                }
+                var node = findNodeUnderMouse(mouseX, mouseY);
+                if (node) {
+                    if (hoveredNode !== node.id) {
+                        hoveredNode = node.id;
+                        canvas.style.cursor = 'pointer';
+                        draw();
+                        canvas.title = node.label + (node.enabled ? ' (已启用)' : ' (已禁用)');
+                    }
+                } else {
+                    if (hoveredNode !== null) {
+                        hoveredNode = null;
+                        canvas.style.cursor = 'grab';
+                        canvas.title = '';
+                        draw();
+                    }
+                }
+            }
+
+            function onMouseUp(e) {
+                if (dragging) { dragging = false; dragNode = null; canvas.style.cursor = 'grab'; }
+                if (panning) { panning = false; canvas.style.cursor = 'grab'; }
+            }
+
+            function onWheel(e) {
+                e.preventDefault();
+                var rect = canvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                var worldBefore = screenToWorld(mouseX, mouseY);
+                var delta = e.deltaY > 0 ? 0.9 : 1.1;
+                var newScale = transform.scale * delta;
+                newScale = Math.min(Math.max(newScale, 0.3), 3);
+                transform.scale = newScale;
+                var worldAfter = screenToWorld(mouseX, mouseY);
+                transform.offsetX += (worldAfter.x - worldBefore.x) * transform.scale;
+                transform.offsetY += (worldAfter.y - worldBefore.y) * transform.scale;
+                draw();
+            }
+
+            function resetView() {
+                transform.scale = 1;
+                transform.offsetX = canvas.width / 2;
+                transform.offsetY = canvas.height / 2;
+                draw();
+            }
+
+            function zoomIn() {
+                transform.scale = Math.min(transform.scale * 1.2, 3);
+                draw();
+            }
+
+            function zoomOut() {
+                transform.scale = Math.max(transform.scale / 1.2, 0.3);
+                draw();
+            }
+
+            function cleanup() {
+                if (animationId) cancelAnimationFrame(animationId);
+                canvas.removeEventListener('mousedown', onMouseDown);
+                canvas.removeEventListener('mousemove', onMouseMove);
+                canvas.removeEventListener('mouseup', onMouseUp);
+                canvas.removeEventListener('wheel', onWheel);
+                window.removeEventListener('mouseup', onMouseUp);
+                canvas.removeEventListener('contextmenu', preventContextMenu);
+            }
+
+            function preventContextMenu(e) { e.preventDefault(); }
+
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            canvas.addEventListener('contextmenu', preventContextMenu);
+            resetBtn.onclick = resetView;
+            zoomInBtn.onclick = zoomIn;
+            zoomOutBtn.onclick = zoomOut;
+            closeBtn.onclick = function() { cleanup(); modal.remove(); };
+            animate();
+        });
+    }
+
+    // ---------- 主配置表单 ----------
+    function buildMainConfigForm(config) {
+        var fields = [
+            { name: 'username', label: '用户名', type: 'text' },
+            { name: 'password', label: '密码', type: 'password' },
+            { name: 'defaultRoomId', label: '默认房间ID', type: 'text' },
+            { name: 'roomPassword', label: '房间密码', type: 'text' },
+            { name: 'color', label: '消息颜色', type: 'text' },
+            { name: 'signature', label: '签名', type: 'text' },
+            { name: 'logLevel', label: '日志级别', type: 'select', options: ['error', 'warn', 'info', 'debug'] },
+            { name: 'ownerUid', label: '主人UID', type: 'text' },
+            { name: 'ownerName', label: '主人名称', type: 'text' },
+            { name: 'adminList', label: '管理员列表', type: 'textarea' }
+        ];
+        var form = document.getElementById('main-config-form');
+        form.innerHTML = '';
+        for (var i = 0; i < fields.length; i++) {
+            var f = fields[i];
+            var div = document.createElement('div');
+            div.className = 'config-row';
+            var label = document.createElement('label');
+            label.innerText = f.label;
+            div.appendChild(label);
+            var input;
+            if (f.type === 'select') {
+                input = document.createElement('select');
+                for (var j = 0; j < f.options.length; j++) {
+                    var opt = document.createElement('option');
+                    opt.value = f.options[j];
+                    opt.innerText = f.options[j];
+                    input.appendChild(opt);
+                }
+            } else if (f.type === 'textarea') {
+                input = document.createElement('textarea');
+                input.rows = 3;
+            } else {
+                input = document.createElement('input');
+                input.type = f.type;
+            }
+            input.name = f.name;
+            if (f.name === 'adminList') {
+                input.value = JSON.stringify(config[f.name] || [], null, 2);
+            } else {
+                input.value = config[f.name] !== undefined ? config[f.name] : '';
+            }
+            div.appendChild(input);
+            form.appendChild(div);
+        }
+    }
+
+    function loadMainConfig() {
+        httpGet('/api/config/main', function(err, config) {
+            if (err) return console.error('获取主配置失败', err);
+            buildMainConfigForm(config);
+            document.getElementById('main-config-json').value = JSON.stringify(config, null, 2);
+            document.getElementById('main-config-json').style.display = mainConfigMode === 'json' ? 'block' : 'none';
+            document.getElementById('main-config-form').style.display = mainConfigMode === 'form' ? 'block' : 'none';
+            var btns = document.querySelectorAll('#config-view .mode-switch button');
+            for (var i = 0; i < btns.length; i++) {
+                if (btns[i].getAttribute('data-mode') === mainConfigMode) btns[i].classList.add('active');
+                else btns[i].classList.remove('active');
+            }
+        });
+    }
+
+    function saveMainConfig() {
+        var config;
+        if (mainConfigMode === 'form') {
+            var form = document.getElementById('main-config-form');
+            var formData = {};
+            var inputs = form.querySelectorAll('input, select, textarea');
+            for (var i = 0; i < inputs.length; i++) {
+                var input = inputs[i];
+                var name = input.name;
+                var value = input.value;
+                if (name === 'adminList') {
+                    try { value = JSON.parse(value); } catch (e) { alert('管理员列表 JSON 格式错误'); return; }
+                }
+                formData[name] = value;
+            }
+            config = formData;
+        } else {
+            try {
+                config = JSON.parse(document.getElementById('main-config-json').value);
+            } catch (e) { alert('JSON 格式错误'); return; }
+        }
+        httpPost('/api/config/main', config, function(err) {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('主配置保存成功，请重启机器人生效');
+        });
+    }
+
+    // ---------- 插件配置 ----------
+    function buildPluginConfigForm(config, schema) {
+        var form = document.getElementById('plugin-config-form');
+        form.innerHTML = '';
+        if (!schema || Object.keys(schema).length === 0) {
+            form.innerHTML = '<p>该插件无配置说明，请使用 JSON 模式编辑。</p>';
+            return;
+        }
+        for (var field in schema) {
+            if (schema.hasOwnProperty(field)) {
+                var info = schema[field];
+                var div = document.createElement('div');
+                div.className = 'config-row';
+                var label = document.createElement('label');
+                label.innerText = field;
+                div.appendChild(label);
+                var input;
+                if (info.type === 'boolean') {
+                    input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = config[field] || false;
+                } else if (info.type === 'number') {
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = config[field] !== undefined ? config[field] : '';
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = config[field] !== undefined ? config[field] : '';
+                }
+                input.name = field;
+                div.appendChild(input);
+                form.appendChild(div);
+            }
+        }
+    }
+
+    function loadPluginSelect() {
+        httpGet('/api/plugins/detail', function(err, plugins) {
+            if (err) return console.error('获取插件列表失败', err);
+            var select = document.getElementById('plugin-select');
+            select.innerHTML = '<option value="">-- 选择插件 --</option>';
+            for (var i = 0; i < plugins.length; i++) {
+                var p = plugins[i];
+                var option = document.createElement('option');
+                option.value = p.name;
+                option.innerText = p.name;
+                select.appendChild(option);
+            }
+            select.onchange = function() {
+                var pluginName = select.value;
+                var form = document.getElementById('plugin-config-form');
+                var jsonArea = document.getElementById('plugin-config-json');
+                var schemaDiv = document.getElementById('plugin-schema-table');
+                if (!pluginName) {
+                    form.style.display = 'none';
+                    jsonArea.style.display = 'none';
+                    schemaDiv.innerHTML = '';
+                    return;
+                }
+                httpGet('/api/config/plugin/' + pluginName, function(err, config) {
+                    if (err) return console.error('获取插件配置失败', err);
+                    httpGet('/api/plugin/schema/' + pluginName, function(err, schema) {
+                        if (err) return console.error('获取插件 schema 失败', err);
+                        if (!schema || Object.keys(schema).length === 0) {
+                            schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
+                        } else {
+                            var html = '<table style="width:100%; border-collapse:collapse; margin-bottom:1rem;">';
+                            html += '<thead><tr><th>字段名</th><th>类型</th><th>说明</th></tr></thead><tbody>';
+                            for (var f in schema) {
+                                if (schema.hasOwnProperty(f)) {
+                                    html += '<tr><td><code>' + f + '</code></td><td>' + (schema[f].type || 'string') + '</td><td>' + (schema[f].description || '') + '</td></tr>';
+                                }
+                            }
+                            html += '</tbody></table>';
+                            schemaDiv.innerHTML = html;
+                        }
+                        buildPluginConfigForm(config, schema);
+                        jsonArea.value = JSON.stringify(config, null, 2);
+                        if (pluginConfigMode === 'form') {
+                            form.style.display = 'block';
+                            jsonArea.style.display = 'none';
+                        } else {
+                            form.style.display = 'none';
+                            jsonArea.style.display = 'block';
+                        }
+                        form.setAttribute('data-plugin-name', pluginName);
+                        jsonArea.setAttribute('data-plugin-name', pluginName);
+                    });
+                });
+            };
+        });
+    }
+
+    function savePluginConfig() {
+        var pluginName = document.getElementById('plugin-select').value;
+        if (!pluginName) { alert('请先选择一个插件'); return; }
+        var config;
+        if (pluginConfigMode === 'form') {
+            var form = document.getElementById('plugin-config-form');
+            var formData = {};
+            var inputs = form.querySelectorAll('input, select, textarea');
+            for (var i = 0; i < inputs.length; i++) {
+                var input = inputs[i];
+                var name = input.name;
+                var value;
+                if (input.type === 'checkbox') value = input.checked;
+                else if (input.type === 'number') value = parseFloat(input.value);
+                else value = input.value;
+                formData[name] = value;
+            }
+            config = formData;
+        } else {
+            try {
+                config = JSON.parse(document.getElementById('plugin-config-json').value);
+            } catch (e) { alert('JSON 格式错误'); return; }
+        }
+        httpPost('/api/config/plugin/' + pluginName, config, function(err) {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('插件配置保存成功，请重启机器人生效');
+        });
+    }
+
+    function restartBot() {
+        if (confirm('确定要重启机器人吗？')) {
+            httpPost('/api/system/restart', {}, function(err) {
+                if (err) alert('重启请求失败: ' + err.message);
+                else {
+                    alert('机器人正在重启，请稍后...');
+                    setTimeout(function() { window.location.reload(); }, 2000);
+                }
+            });
+        }
+    }
+
+    function showPage(pageName) {
+        var pages = document.querySelectorAll('.page');
+        for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+        document.getElementById(pageName + '-view').classList.add('active');
+        var navBtns = document.querySelectorAll('nav button');
+        for (var i = 0; i < navBtns.length; i++) navBtns[i].classList.remove('active');
+        var activeBtn = document.querySelector('nav button[data-page="' + pageName + '"]');
+        if (activeBtn) activeBtn.classList.add('active');
+        currentPage = pageName;
+        if (pageName === 'plugins') loadPluginsDetail();
+        if (pageName === 'config') { loadMainConfig(); loadPluginSelect(); }
+    }
+
+    function init() {
+        var navBtns = document.querySelectorAll('nav button');
+        for (var i = 0; i < navBtns.length; i++) {
+            navBtns[i].onclick = function() { showPage(this.getAttribute('data-page')); };
+        }
+        document.getElementById('save-main-config').onclick = saveMainConfig;
+        document.getElementById('save-plugin-config').onclick = savePluginConfig;
+        document.getElementById('restart-btn').onclick = restartBot;
+        document.getElementById('dep-graph-btn').onclick = loadDependencyGraph;
+
+        var modeBtns = document.querySelectorAll('#config-view .mode-switch button');
+        for (var i = 0; i < modeBtns.length; i++) {
+            modeBtns[i].onclick = function() {
+                var container = this.closest('.card');
+                if (container.querySelector('h2').innerText.indexOf('主配置') !== -1) {
+                    mainConfigMode = this.getAttribute('data-mode');
+                    loadMainConfig();
+                } else {
+                    pluginConfigMode = this.getAttribute('data-plugin-mode');
+                    var pluginName = document.getElementById('plugin-select').value;
+                    if (pluginName) {
+                        var form = document.getElementById('plugin-config-form');
+                        var jsonArea = document.getElementById('plugin-config-json');
+                        if (pluginConfigMode === 'form') {
+                            form.style.display = 'block';
+                            jsonArea.style.display = 'none';
+                        } else {
+                            form.style.display = 'none';
+                            jsonArea.style.display = 'block';
+                        }
+                    }
+                }
+                var btns = container.querySelectorAll('.mode-switch button');
+                for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
+                this.classList.add('active');
+            };
+        }
+        connectWebSocket();
+        setInterval(updateDashboard, 5000);
+        updateDashboard();
+        showPage('dashboard');
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+</script>
+</body>
+</html>
