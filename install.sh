@@ -25,7 +25,7 @@ detect_os() {
 
 # 安装 Node.js 18+ (根据不同系统)
 install_node() {
-    echo -e "${YELLOW}正在安装 Node.js 18+...${NC}"
+    echo -e "${YELLOW}正在安装 Node.js ...${NC}"
     case "$OS" in
         ubuntu|debian)
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
@@ -163,7 +163,7 @@ chmod +x start.sh
 if [ "$OS" = "termux" ]; then
     mkdir -p "$HOME/.shortcuts"
     cat > "$HOME/.shortcuts/iirose-bot" <<EOF
-#!/data/data/com.termux/files/usr/bin/bash
+s|./bash start.sh
 cd "$INSTALL_DIR"
 ./start.sh
 EOF
