@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 set -e
 
+# 颜色输出
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -25,7 +26,7 @@ detect_os() {
 
 # 安装 Node.js 18+ (根据不同系统)
 install_node() {
-    echo -e "${YELLOW}正在安装 Node.js ...${NC}"
+    echo -e "${YELLOW}正在安装 Node.js 18+...${NC}"
     case "$OS" in
         ubuntu|debian)
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
@@ -146,11 +147,18 @@ EOF
 
 # 下载 ECharts（用于 Web 图表）
 echo -e "${YELLOW}下载 ECharts 本地库...${NC}"
+mkdir -p webui
 curl -o webui/echarts.min.js https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js
 
-# 创建启动脚本
+# 创建启动脚本（使用 Termux 正确的解释器路径）
+if [ "$OS" = "termux" ]; then
+    SHEBANG="#!/data/data/com.termux/files/usr/bin/bash"
+else
+    SHEBANG="#!/bin/bash"
+fi
+
 cat > start.sh <<EOF
-#!/bin/bash
+${SHEBANG}
 cd "$INSTALL_DIR"
 export WEBUI_PORT=8080
 export WEB_USERNAME=admin
@@ -159,11 +167,11 @@ node bot.js
 EOF
 chmod +x start.sh
 
-# Termux 特殊处理：创建快捷启动文件
+# Termux 特殊处理：创建快捷启动文件（使用正确解释器）
 if [ "$OS" = "termux" ]; then
     mkdir -p "$HOME/.shortcuts"
     cat > "$HOME/.shortcuts/iirose-bot" <<EOF
-s|./bash start.sh
+#!/data/data/com.termux/files/usr/bin/bash
 cd "$INSTALL_DIR"
 ./start.sh
 EOF
