@@ -31,29 +31,38 @@ cd ~/iirose-bot
 
 如果一键脚本不适用，可以手动安装：
 
-```
+
 ### 克隆仓库
+
+```
 git clone https://github.com/ixix-info/iirose-bot.git
 cd iirose-bot
 
 ```
 
-```
+
 ### 安装依赖
+
+```
 npm install ws cron express lru-cache winston winston-daily-rotate-file express-session
 ```
 
-```
+
 ### 创建必要目录
+
+```
 mkdir -p data plugins webui logs
 ```
 
-```
+
 ### 启动机器人
+
+```
 export WEBUI_PORT=8080
 export WEB_USERNAME=admin
 export WEB_PASSWORD=admin
 node bot.js
+
 ```
 
 ## 配置说明
