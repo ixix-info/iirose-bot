@@ -1,0 +1,28 @@
+{
+  "name": "iirose-plugins",
+  "updated": "2026-04-17T10:00:00Z",
+  "plugins": [
+    {
+      "name": "ai_chat",
+      "displayName": "AI 聊天助手",
+      "version": "1.2.0",
+      "description": "智能AI助手，支持搜索、爬虫、函数调用",
+      "author": "ixix",
+      "homepage": "https://github.com/ixix-info/iirose-bot/tree/main/plugins-shop/ai_chat",
+      "downloadUrl": "https://raw.githubusercontent.com/ixix-info/iirose-bot/main/plugins-shop/ai_chat.js",
+      "dependencies": [],
+      "npmDependencies": ["axios", "cheerio", "mathjs", "robots-parser"],
+      "minBotVersion": "1.0.0"
+    },
+    {
+      "name": "music",
+      "displayName": "点歌插件",
+      "version": "1.1.0",
+      "description": "支持网易云音乐搜索和点歌",
+      "author": "ixix",
+      "downloadUrl": "https://raw.githubusercontent.com/ixix-info/iirose-bot/main/plugins-shop/music.js",
+      "dependencies": [],
+      "npmDependencies": ["axios"]
+    }
+  ]
+}
