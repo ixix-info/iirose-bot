@@ -30,7 +30,7 @@ const WEBUI_PORT = process.env.WEBUI_PORT || 8080;
 const logger = winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
     format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level.toUpperCase()}] ${message}`)
     ),
     transports: [
@@ -40,7 +40,13 @@ const logger = winston.createLogger({
             maxSize: '20m',
             maxFiles: '14d'
         }),
-        new winston.transports.Console({ format: winston.format.combine(winston.format.colorize(), winston.format.simple()) })
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}] ${message}`)
+            )
+        })
     ]
 });
 
@@ -110,6 +116,23 @@ const encoder = {
         const data = JSON.stringify({ g: uid, m: message, mc: rgbaToHex(color), i: messageId });
         return { messageId, data };
     },
+    mentionByUid: (uid, message, color) => {
+        const content = ` [@${uid}@] ${message}`;
+        return encoder.publicMessage(content, color);
+    },
+    mentionChannel: (channelId, message, color) => {
+        const content = ` [_${channelId}_] ${message}`;
+        return encoder.publicMessage(content, color);
+    },
+    replyMessage: (originalMsg, originalSender, originalMsgId, replyContent, color) => {
+        const quotedPart = `${originalMsg} (_hr) ${originalSender}_${originalMsgId} (hr_) `;
+        const data = JSON.stringify({
+            m: quotedPart + replyContent,
+            mc: rgbaToHex(color),
+            i: generateMessageId()
+        });
+        return { messageId: generateMessageId(), data };
+    },
     like(uid, msg='') { return `+*${uid}${msg?' '+msg:''}`; },
     dislike(uid, msg='') { return `+!${uid}${msg?' '+msg:''}`; },
     follow(uid) { return `+#0${uid}`; },
@@ -130,9 +153,13 @@ const encoder = {
         return `!h3["${map[type]}","${username}","${time}","${reason}"]`;
     },
     blacklist: (username, time, reason='') => `!hb["${username}","${time}","${reason}"]`,
+    whitelist: (username, time, reason='') => `!hw["${username}","${time}","${reason}"]`,
+    removeBlacklist: (username) => `!hr["${username}"]`,
+    removeWhitelist: (username) => `!hrw["${username}"]`,
+    setRoomNotice: (notice, background) => `!h2["${notice}","${background}"]`,
     setMaxUser: (num) => num ? `!h6["1${num}"]` : '!h6["1"]',
     deleteMessage: (channelId, msgId) => channelId.startsWith('private:') ? `v0*${channelId.split(':')[1]}#${msgId}` : `v0#${msgId}`,
-    broadcast: (message, color) => `~${JSON.stringify({ t: message, c: rgbaToHex(color) })}`,
+    broadcast: (message, color) => `~${JSON.stringify({ t: message, c: rgbaToHex(color), v: 0 })}`,
     mediaCard: (type, title, singer, cover, color, duration, bitRate=320, origin=null) => {
         const enc = s => s.replace(/[&<>"'/]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[s]));
         title = enc(title); singer = enc(singer); color = enc(color);
@@ -157,6 +184,7 @@ const encoder = {
     mediaOperation: (op, time) => `!15["${op}","${time}"]`,
     getUserProfileByName: (name) => `+-${name}`,
     getSelfInfo: () => '$1',
+    getUserList: () => 'r2',
     getMusicList: () => '%',
     getForum: () => ':-',
     getTasks: () => ':+',
@@ -204,6 +232,11 @@ function parsePublicMessage(msg) {
             }
             if (quotes.length) reply = quotes;
         }
+        const mentions = { users: [], rooms: [] };
+        const userMentionMatch = realMsg.match(/\[\*([^\]]+)\*\]/g);
+        if (userMentionMatch) userMentionMatch.forEach(m => mentions.users.push(m.slice(2, -2)));
+        const roomMentionMatch = realMsg.match(/\[_([^\]]+)_\]/g);
+        if (roomMentionMatch) roomMentionMatch.forEach(m => mentions.rooms.push(m.slice(2, -2)));
         return {
             type: 'public',
             timestamp: Number(tmp[0]),
@@ -215,6 +248,7 @@ function parsePublicMessage(msg) {
             title: tmp[9] === "'108" ? '花瓣' : tmp[9],
             messageId: Number(tmp[10]),
             replyMessage: reply,
+            mentions: (mentions.users.length || mentions.rooms.length) ? mentions : undefined
         };
     }
     return null;
@@ -247,6 +281,11 @@ function parsePrivateMessage(msg) {
                 }
                 if (quotes.length) reply = quotes;
             }
+            const mentions = { users: [], rooms: [] };
+            const userMentionMatch = realMsg.match(/\[\*([^\]]+)\*\]/g);
+            if (userMentionMatch) userMentionMatch.forEach(m => mentions.users.push(m.slice(2, -2)));
+            const roomMentionMatch = realMsg.match(/\[_([^\]]+)_\]/g);
+            if (roomMentionMatch) roomMentionMatch.forEach(m => mentions.rooms.push(m.slice(2, -2)));
             return {
                 type: 'private',
                 timestamp: Number(tmp[0]),
@@ -257,6 +296,28 @@ function parsePrivateMessage(msg) {
                 color: tmp[5],
                 messageId: Number(tmp[10]),
                 replyMessage: reply,
+                mentions: (mentions.users.length || mentions.rooms.length) ? mentions : undefined
+            };
+        }
+    }
+    return null;
+}
+
+function parseAnonymousMessage(msg) {
+    if (!msg.startsWith('""')) return null;
+    const item = msg.slice(2).split('<');
+    for (let part of item) {
+        const tmp = part.split('>');
+        if (tmp.length === 11 && /^\d+$/.test(tmp[0]) && tmp[4] && tmp[4].endsWith('>>@')) {
+            return {
+                type: 'private_anonymous',
+                timestamp: Number(tmp[0]),
+                uid: tmp[1],
+                username: decode(tmp[2]),
+                avatar: parseAvatar(tmp[3]),
+                message: decode(tmp[4].slice(0, -3)),
+                color: tmp[5],
+                messageId: Number(tmp[10]),
             };
         }
     }
@@ -273,9 +334,7 @@ function parseMemberUpdate(msg) {
     const lastPart = parts[parts.length - 1];
     if (parts[3] === "'1") {
         let status = '';
-        for (let i = lastPart.length - 1; i >= 0; i--) {
-            if (lastPart[i] !== "'") { status = lastPart[i]; break; }
-        }
+        for (let i = lastPart.length - 1; i >= 0; i--) if (lastPart[i] !== "'") { status = lastPart[i]; break; }
         if (status === 'n' || status === 'd') {
             return {
                 type: 'join',
@@ -288,14 +347,7 @@ function parseMemberUpdate(msg) {
         }
     }
     if (parts[3] === "'3" && parts[parts.length-2] === '' && lastPart === '2') {
-        return {
-            type: 'leave',
-            timestamp,
-            avatar: parseAvatar(avatar),
-            username: decode(username),
-            uid,
-            isMove: false,
-        };
+        return { type: 'leave', timestamp, avatar: parseAvatar(avatar), username: decode(username), uid, isMove: false };
     }
     if (parts[3].startsWith("'2")) {
         const targetRoomId = parts[3].slice(2);
@@ -382,14 +434,16 @@ function parseSelfMove(msg) {
 function parseBroadcast(msg) {
     if (!msg.startsWith('=')) return null;
     const parts = msg.slice(1).split('>');
-    if (parts.length < 8) return null;
+    if (parts.length < 13) return null;
     return {
-        username: parts[0],
+        type: 'broadcast',
+        username: decode(parts[0]),
         message: decode(parts[1]),
         color: parts[2],
         avatar: parseAvatar(parts[5]),
         timestamp: parts[6],
-        messageId: parts[7],
+        uid: parts[7],
+        messageId: parts[12],
     };
 }
 
@@ -399,114 +453,132 @@ function parseMailbox(msg) {
     for (let part of parts) {
         const tmp = part.split('>');
         if (tmp.length === 3) {
-            return {
-                type: 'roomNotice',
-                notice: decode(tmp[0]),
-                background: tmp[1],
-                timestamp: Number(tmp[2]),
-            };
+            return { type: 'roomNotice', notice: decode(tmp[0]), background: tmp[1], timestamp: Number(tmp[2]) };
         }
         if (tmp.length === 7) {
             if (/^'\^/.test(tmp[3])) {
-                return {
-                    type: 'follower',
-                    username: decode(tmp[0]),
-                    avatar: parseAvatar(tmp[1]),
-                    gender: tmp[2],
-                    background: tmp[4],
-                    timestamp: Number(tmp[5]),
-                    color: tmp[6],
-                };
+                return { type: 'follower', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6] };
             } else if (/^'\*/.test(tmp[3])) {
-                return {
-                    type: 'like',
-                    username: decode(tmp[0]),
-                    avatar: parseAvatar(tmp[1]),
-                    gender: tmp[2],
-                    background: tmp[4],
-                    timestamp: Number(tmp[5]),
-                    color: tmp[6],
-                    message: decode(tmp[3].substring(2)),
-                };
+                return { type: 'like', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6], message: decode(tmp[3].substring(2)) };
             } else if (/^'h/.test(tmp[3])) {
-                return {
-                    type: 'dislike',
-                    username: decode(tmp[0]),
-                    avatar: parseAvatar(tmp[1]),
-                    gender: tmp[2],
-                    background: tmp[4],
-                    timestamp: Number(tmp[5]),
-                    color: tmp[6],
-                    message: decode(tmp[3].substring(2)),
-                };
+                return { type: 'dislike', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6], message: decode(tmp[3].substring(2)) };
             } else if (/^'\$/.test(tmp[3])) {
-                return {
-                    type: 'payment',
-                    username: decode(tmp[0]),
-                    avatar: parseAvatar(tmp[1]),
-                    gender: tmp[2],
-                    money: parseInt(tmp[3].split(' ')[0].substring(1)),
-                    message: decode(tmp[3].split(' ')[1] || ''),
-                    background: tmp[4],
-                    timestamp: Number(tmp[5]),
-                    color: tmp[6],
-                };
+                const moneyMatch = tmp[3].match(/\$(\d+)/);
+                const msgMatch = tmp[3].match(/\$(\d+)\s*(.*)/);
+                return { type: 'payment', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], money: moneyMatch ? parseInt(moneyMatch[1]) : 0, message: msgMatch ? decode(msgMatch[2] || '') : '', background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6] };
             }
         }
     }
     return null;
 }
 
+function parseMoments(msg) {
+    if (!msg.startsWith('=')) return null;
+    const parts = msg.slice(1).split('>');
+    if (parts.length < 8) return null;
+    return {
+        type: 'moments',
+        username: decode(parts[0]),
+        avatar: parseAvatar(parts[1]),
+        gender: parts[2],
+        userId: parts[3],
+        content: decode(parts[4]),
+        timestamp: Number(parts[5]),
+        messageId: parts[6],
+        likes: parts[7]
+    };
+}
+
+function parseLeaderboard(msg) {
+    if (!msg.startsWith('`#')) return null;
+    const items = [];
+    const raw = msg.slice(2).split('<');
+    for (const item of raw) {
+        const parts = item.split('>');
+        if (parts.length >= 6) {
+            items.push({
+                rank: parts[0],
+                username: decode(parts[1]),
+                avatar: parseAvatar(parts[2]),
+                color: parts[3],
+                uid: parts[4],
+                value: parts[5]
+            });
+        }
+    }
+    return { type: 'leaderboard', items };
+}
+
+function parseStore(msg) {
+    if (!msg.startsWith('g-')) return null;
+    const parts = msg.slice(2).split('>');
+    if (parts.length < 10) return null;
+    return {
+        type: 'store',
+        shopId: parts[0],
+        shopIcon: parts[1],
+        shopName: decode(parts[2]),
+        shopDesc: decode(parts[3]),
+        shopBg: parts[4],
+        items: parts.slice(5)
+    };
+}
+
+function parseSellerCenter(msg) {
+    if (!msg.startsWith('g+')) return null;
+    return { type: 'sellerCenter', data: msg.slice(2) };
+}
+
+function parseFollowList(msg) {
+    if (!msg.startsWith('|^')) return null;
+    const items = msg.slice(2).split('<');
+    const follows = [];
+    for (const item of items) {
+        const parts = item.split("'");
+        if (parts.length >= 2) {
+            follows.push({
+                username: decode(parts[0]),
+                avatar: parts[1]
+            });
+        }
+    }
+    return { type: 'followList', follows };
+}
+
 function parseMusicMessage(msg) {
     if (!msg.startsWith('"')) return null;
     const message = msg.slice(1);
     const tmp = message.split('>');
-    if (tmp.length === 11 && /^\d+$/.test(tmp[0])) {
-        let realMsg = tmp[3];
-        if (realMsg.startsWith('m__4@')) {
-            const musicData = realMsg.split('>');
-            return {
-                type: 'music',
-                timestamp: Number(tmp[0]),
-                avatar: parseAvatar(tmp[1]),
-                username: decode(tmp[2]),
-                color: tmp[5],
-                uid: tmp[8],
-                title: tmp[9] === "'108" ? '花瓣' : tmp[9],
-                messageId: Number(tmp[10]),
-                musicName: decode(musicData[1]),
-                musicSinger: decode(musicData[2]),
-                musicPic: musicData[3],
-                musicColor: musicData[4],
-            };
-        }
+    if (tmp.length === 11 && /^\d+$/.test(tmp[0]) && tmp[3].startsWith('m__4@')) {
+        const musicData = tmp[3].split('>');
+        return {
+            type: 'music',
+            timestamp: Number(tmp[0]),
+            avatar: parseAvatar(tmp[1]),
+            username: decode(tmp[2]),
+            color: tmp[5],
+            uid: tmp[8],
+            title: tmp[9] === "'108" ? '花瓣' : tmp[9],
+            messageId: Number(tmp[10]),
+            musicName: decode(musicData[1]),
+            musicSinger: decode(musicData[2]),
+            musicPic: musicData[3],
+            musicColor: musicData[4],
+        };
     }
     return null;
 }
 
 function parseMessageDeleted(botUid, msg) {
-    const publicMatch = msg.match(/^v0#([^_]+)_([^"]+)"?$/);
+    const publicMatch = msg.match(/^v0#([^_]+)_(\d+)"?$/);
     if (publicMatch) {
         const [, userId, messageId] = publicMatch;
-        return {
-            type: 'message-deleted',
-            userId,
-            messageId,
-            channelId: '',
-            timestamp: Date.now(),
-        };
+        return { type: 'message-deleted', userId, messageId, channelId: '', timestamp: Date.now() };
     }
     const privateMatch = msg.match(/^v0\*([^"]+)"([^_]+)_(\d+)$/);
     if (privateMatch) {
         const [, receiverId, senderId, messageId] = privateMatch;
-        const channelId = `private:${senderId}`;
-        return {
-            type: 'message-deleted',
-            userId: senderId,
-            messageId,
-            channelId,
-            timestamp: Date.now(),
-        };
+        return { type: 'message-deleted', userId: senderId, messageId, channelId: `private:${senderId}`, timestamp: Date.now() };
     }
     return null;
 }
@@ -578,6 +650,7 @@ class IiroseBot extends EventEmitter {
         this.ws = null;
         this.isRunning = false;
         this.retryCount = 0;
+        this.consecutive502Count = 0;
         this.heartbeatTimer = null;
         this.reconnectTimer = null;
         this.responseQueue = [];
@@ -585,6 +658,7 @@ class IiroseBot extends EventEmitter {
         this.userListCache = new LRUCache({ max: 500 });
         this.roomListCache = new LRUCache({ max: 200 });
         this.currentRoomId = config.defaultRoomId;
+        this.lastRoomId = '';
         this.loggedIn = false;
         this.cronJobs = [];
         this.commands = new Map();
@@ -602,8 +676,7 @@ class IiroseBot extends EventEmitter {
     log(level, ...args) {
         const levels = { error:0, warn:1, info:2, debug:3 };
         if (levels[level] > levels[this.logLevel]) return;
-        const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}] `;
-        console.log(prefix, ...args);
+        console.log(...args);
     }
 
     getPluginConfig(pluginName) {
@@ -614,10 +687,7 @@ class IiroseBot extends EventEmitter {
         this.pluginConfigs.set(pluginName, cfg);
         return cfg;
     }
-    reloadPluginConfig(pluginName) {
-        this.pluginConfigs.delete(pluginName);
-        return this.getPluginConfig(pluginName);
-    }
+    reloadPluginConfig(pluginName) { this.pluginConfigs.delete(pluginName); return this.getPluginConfig(pluginName); }
     registerPluginConfigSchema(pluginName, schema) { this.pluginSchemas.set(pluginName, schema); }
 
     async connect() {
@@ -636,10 +706,14 @@ class IiroseBot extends EventEmitter {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
         });
         this.ws.binaryType = 'arraybuffer';
-        this.ws.on('open', () => this.onOpen());
+        let encountered502 = false;
+        this.ws.on('open', () => { this.consecutive502Count = 0; this.onOpen(); });
         this.ws.on('message', (data) => this.onMessage(data));
-        this.ws.on('error', (err) => this.log('error', 'WebSocket错误', err.message));
-        this.ws.on('close', () => this.onClose());
+        this.ws.on('error', (err) => {
+            if (err.message && err.message.includes('502')) { encountered502 = true; this.consecutive502Count++; }
+            this.log('error', 'WebSocket错误', err.message);
+        });
+        this.ws.on('close', () => this.onClose(encountered502));
     }
 
     testLatency(url) {
@@ -658,6 +732,7 @@ class IiroseBot extends EventEmitter {
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         const loginObj = {
             r: this.currentRoomId,
+            lr: this.lastRoomId || '',
             n: this.config.username,
             p: md5(this.config.password),
             st: 'n',
@@ -704,6 +779,7 @@ class IiroseBot extends EventEmitter {
         try {
             if ((decoded = parsePublicMessage(msg))) this.emit('publicMessage', decoded);
             else if ((decoded = parsePrivateMessage(msg))) this.emit('privateMessage', decoded);
+            else if ((decoded = parseAnonymousMessage(msg))) this.emit('anonymousMessage', decoded);
             else if ((decoded = parseMemberUpdate(msg))) this.emit('memberUpdate', decoded);
             else if ((decoded = parseMusic(msg))) this.emit('music', decoded);
             else if ((decoded = parseBankCallback(msg))) this.emit('bank', decoded);
@@ -712,6 +788,11 @@ class IiroseBot extends EventEmitter {
             else if ((decoded = parseSelfMove(msg))) this.emit('selfMove', decoded);
             else if ((decoded = parseBroadcast(msg))) this.emit('broadcast', decoded);
             else if ((decoded = parseMailbox(msg))) this.emit('mailbox', decoded);
+            else if ((decoded = parseMoments(msg))) this.emit('moments', decoded);
+            else if ((decoded = parseLeaderboard(msg))) this.emit('leaderboard', decoded);
+            else if ((decoded = parseStore(msg))) this.emit('store', decoded);
+            else if ((decoded = parseSellerCenter(msg))) this.emit('sellerCenter', decoded);
+            else if ((decoded = parseFollowList(msg))) this.emit('followList', decoded);
             else if ((decoded = parseMusicMessage(msg))) this.emit('musicMessage', decoded);
             else if ((decoded = parseMessageDeleted(this.config.uid, msg))) this.emit('messageDeleted', decoded);
             else if (msg.startsWith('%1')) {
@@ -733,15 +814,21 @@ class IiroseBot extends EventEmitter {
         } catch (err) { this.log('error', `消息解析异常: ${err.message}\n原始消息: ${msg.substring(0,200)}`); }
     }
 
-    onClose() {
+    onClose(was502 = false) {
         this.log('warn', 'WebSocket连接断开');
         this.loggedIn = false;
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
         if (!this.isRunning) return;
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        const delay = Math.min(RETRY_BASE_DELAY + this.retryCount * 5000, MAX_RETRY_DELAY);
-        this.retryCount++;
-        this.log('info', `${delay/1000}秒后重连...`);
+        let delay;
+        if (was502) {
+            delay = Math.min(30000 * Math.pow(1.5, this.consecutive502Count - 1), 300000);
+            this.log('info', `检测到 502 错误，${Math.round(delay/1000)}秒后重连... (连续 502 次数: ${this.consecutive502Count})`);
+        } else {
+            delay = Math.min(RETRY_BASE_DELAY + this.retryCount * 5000, MAX_RETRY_DELAY);
+            this.retryCount++;
+            this.log('info', `${delay/1000}秒后重连...`);
+        }
         this.reconnectTimer = setTimeout(() => this.connect(), delay);
     }
 
@@ -766,6 +853,19 @@ class IiroseBot extends EventEmitter {
         this.ws.send(Buffer.from(data));
     }
 
+    // 媒体快捷发送
+    sendImage(url, color) {
+        const formatted = url.endsWith('#e') ? url : `${url}#e`;
+        return this.sendMessage(formatted, color);
+    }
+    sendVoice(url, color) {
+        if (!url.endsWith('.weba')) throw new Error('语音 URL 必须以 .weba 结尾');
+        return this.sendMessage(url, color);
+    }
+    sendVideo(url, color) {
+        return this.sendMessage(`[${url}]`, color);
+    }
+
     sendRaw(data) { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(Buffer.from(data)); }
 
     sendAndWait(payload, prefix, timeout = 10000) {
@@ -779,10 +879,15 @@ class IiroseBot extends EventEmitter {
     async moveToRoom(roomId, password = '') {
         if (roomId === this.currentRoomId) return;
         this.log('info', `移动到房间 ${roomId}${password ? ' (有密码)' : ''}`);
+        this.lastRoomId = this.currentRoomId;
         this.currentRoomId = roomId;
         const oldPass = this.config.roomPassword;
         if (password) this.config.roomPassword = password;
-        if (this.ws) this.ws.close();
+        if (this.ws) {
+            this.ws.send(Buffer.from(`m${roomId}`));
+            await new Promise(r => setTimeout(r, 500));
+            this.ws.close();
+        }
         return new Promise((resolve, reject) => {
             const onLogin = () => { this.off('login', onLogin); if (password) this.config.roomPassword = oldPass; resolve(); };
             const onError = (err) => { this.off('login', onLogin); if (password) this.config.roomPassword = oldPass; reject(err); };
@@ -852,17 +957,22 @@ class IiroseBot extends EventEmitter {
         delete require.cache[require.resolve(pluginPath)];
         const pluginFunc = require(pluginPath);
         if (typeof pluginFunc !== 'function') throw new Error('插件导出不是函数');
+        const npmDeps = pluginFunc.npmDependencies || [];
+        await ensureNpmDependencies(pluginName, npmDeps);
         await pluginFunc(this);
         const name = pluginFunc.name || pluginName;
         this.pluginsMeta.set(name, {
             name, description: pluginFunc.description, usage: pluginFunc.usage,
-            dependencies: pluginFunc.dependencies, file, loaded: true, enabled: true,
+            dependencies: pluginFunc.dependencies || [], file, loaded: true, enabled: true,
             destroy: pluginFunc.destroy || null
         });
         if (pluginFunc.configSchema) this.registerPluginConfigSchema(name, pluginFunc.configSchema);
         console.log(`插件 ${name} 动态加载成功`);
     }
-    async hotReloadPlugin(pluginName) { await this.unloadPlugin(pluginName); await this.loadPlugin(pluginName); }
+    async hotReloadPlugin(pluginName) {
+        try { await this.unloadPlugin(pluginName); } catch (e) { this.log('warn', `卸载插件 ${pluginName} 时出错，继续尝试加载: ${e.message}`); }
+        await this.loadPlugin(pluginName);
+    }
     async reloadPluginConfig(pluginName) {
         this.pluginConfigs.delete(pluginName);
         const newCfg = this.getPluginConfig(pluginName);
@@ -887,12 +997,12 @@ function saveEnabledPlugins(enabled) {
     const file = path.join(__dirname, 'data', 'plugins_enabled.json');
     try { fs.writeFileSync(file, JSON.stringify(enabled, null, 2)); } catch(e) { console.error('保存插件状态失败', e); }
 }
-async function ensureDependencies(pluginName, deps) {
+async function ensureNpmDependencies(pluginName, deps) {
     if (!deps || deps.length === 0) return;
     const missing = [];
     for (const dep of deps) try { require.resolve(dep); } catch(e) { missing.push(dep); }
     if (missing.length === 0) return;
-    console.log(`插件 ${pluginName} 缺失依赖: ${missing.join(', ')}，正在自动安装...`);
+    console.log(`插件 ${pluginName} 缺失 npm 依赖: ${missing.join(', ')}，正在自动安装...`);
     for (const pkg of missing) await execPromise(`npm install ${pkg}`, { cwd: __dirname });
 }
 
@@ -915,9 +1025,10 @@ async function loadPlugins(bot) {
             const pluginFunc = require(pluginPath);
             if (typeof pluginFunc !== 'function') { console.warn(`插件 ${file} 没有导出函数`); continue; }
             const pluginName = pluginFunc.name || file.replace(/\.js$/, '');
-            const deps = pluginFunc.dependencies || [];
+            const pluginDeps = pluginFunc.dependencies || [];
+            const npmDeps = pluginFunc.npmDependencies || [];
             const enabled = enabledMap[pluginName] !== false;
-            plugins.set(pluginName, { file, func: pluginFunc, name: pluginName, deps, enabled, loaded: false });
+            plugins.set(pluginName, { file, func: pluginFunc, name: pluginName, pluginDeps, npmDeps, enabled, loaded: false });
         } catch(err) { console.error(`加载插件模块 ${file} 失败:`, err); }
     }
 
@@ -930,7 +1041,7 @@ async function loadPlugins(bot) {
         visiting.add(name);
         const plugin = plugins.get(name);
         if (plugin && plugin.enabled) {
-            for (const dep of plugin.deps) {
+            for (const dep of plugin.pluginDeps) {
                 if (!plugins.has(dep)) throw new Error(`插件 ${name} 依赖的插件 ${dep} 不存在`);
                 if (!plugins.get(dep).enabled) throw new Error(`插件 ${name} 依赖的插件 ${dep} 未启用`);
                 visit(dep);
@@ -946,11 +1057,11 @@ async function loadPlugins(bot) {
         const plugin = plugins.get(name);
         if (plugin && !plugin.loaded) {
             try {
-                await ensureDependencies(plugin.name, plugin.deps);
+                await ensureNpmDependencies(plugin.name, plugin.npmDeps);
                 await plugin.func(bot);
                 bot.pluginsMeta.set(plugin.name, {
                     name: plugin.name, description: plugin.func.description, usage: plugin.func.usage,
-                    dependencies: plugin.deps, file: plugin.file, loaded: true, enabled: true,
+                    dependencies: plugin.pluginDeps, file: plugin.file, loaded: true, enabled: true,
                     destroy: plugin.func.destroy || null
                 });
                 if (plugin.func.configSchema) bot.registerPluginConfigSchema(plugin.name, plugin.func.configSchema);
@@ -1069,13 +1180,13 @@ app.get('/api/plugins', (req, res) => {
 
 app.get('/api/plugins/detail', (req, res) => {
     const plugins = [];
+    const enabledMap = loadEnabledPlugins();
     for (const [name, meta] of bot.pluginsMeta) {
         plugins.push({
-            name, description: meta.description, usage: meta.usage, dependencies: meta.dependencies,
+            name, description: meta.description, usage: meta.usage, dependencies: meta.dependencies || [],
             commandCount: (bot.pluginCommands.get(name) || new Map()).size, enabled: meta.enabled
         });
     }
-    const enabledMap = loadEnabledPlugins();
     const pluginsDir = path.join(__dirname, 'plugins');
     if (fs.existsSync(pluginsDir)) {
         const files = fs.readdirSync(pluginsDir).filter(f => f.endsWith('.js'));
@@ -1093,11 +1204,11 @@ app.get('/api/plugins/detail', (req, res) => {
 
 app.get('/api/plugins/deps-graph', (req, res) => {
     const nodes=[], edges=[];
+    const enabledMap = loadEnabledPlugins();
     for (const [name, meta] of bot.pluginsMeta) {
         nodes.push({ id: name, label: name, enabled: meta.enabled });
-        for (const dep of meta.dependencies) edges.push({ from: name, to: dep });
+        for (const dep of (meta.dependencies || [])) edges.push({ from: name, to: dep });
     }
-    const enabledMap = loadEnabledPlugins();
     const pluginsDir = path.join(__dirname, 'plugins');
     if (fs.existsSync(pluginsDir)) {
         const files = fs.readdirSync(pluginsDir).filter(f => f.endsWith('.js'));
@@ -1192,10 +1303,11 @@ const wss = new WebSocket.Server({ server });
 global.broadcastLog = (msg) => { wss.clients.forEach(client => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ time: new Date().toISOString(), message: msg })); }); };
 
 function recordOnlineCount() {
-    const count = bot.userListCache.size;
+    const roomUsers = Array.from(bot.userListCache.values()).filter(u => u.room === bot.currentRoomId);
+    const count = roomUsers.length;
     let stats = [];
     try { if (fs.existsSync(statsFile)) stats = JSON.parse(fs.readFileSync(statsFile)); } catch(e) {}
-    stats.push({ time: Date.now(), count });
+    stats.push({ time: Date.now(), count, roomId: bot.currentRoomId });
     if (stats.length > 288) stats.shift();
     fs.writeFileSync(statsFile, JSON.stringify(stats, null, 2));
 }
