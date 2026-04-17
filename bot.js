@@ -18,15 +18,26 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
-// ==================== 全局常量 ====================
+// 动态导入 node-fetch（兼容 Node < 18）
+let fetch;
+(async () => {
+    try {
+        fetch = globalThis.fetch;
+    } catch {
+        const { default: nodeFetch } = await import('node-fetch');
+        fetch = nodeFetch;
+    }
+})();
+
 const WS_SERVERS = ['m1', 'm2', 'm8', 'm9', 'm'];
 const WS_PORT = 8778;
 const HEARTBEAT_INTERVAL = 30000;
 const RETRY_BASE_DELAY = 5000;
 const MAX_RETRY_DELAY = 30 * 60 * 1000;
 const WEBUI_PORT = process.env.WEBUI_PORT || 8080;
+const MARKET_INDEX_URL = process.env.MARKET_INDEX_URL || 
+    'https://raw.githubusercontent.com/ixix-info/iirose-bot/main/market-index.json';
 
-// ==================== 日志系统 ====================
 const logger = winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
     format: winston.format.combine(
@@ -80,7 +91,6 @@ console.warn = (...args) => {
     originalConsoleWarn.apply(console, args);
 };
 
-// ==================== 工具函数 ====================
 function md5(str) { return crypto.createHash('md5').update(str).digest('hex'); }
 function generateMessageId() { return Math.random().toString(36).substring(2, 14); }
 function rgbaToHex(rgba) {
@@ -104,7 +114,6 @@ function decode(str) {
     return str.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&#x2F;/g, e => ({ '&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'",'&#x2F;':'/' }[e]));
 }
 
-// ==================== 编码器 ====================
 const encoder = {
     publicMessage(message, color) {
         const messageId = generateMessageId();
@@ -115,23 +124,6 @@ const encoder = {
         const messageId = generateMessageId();
         const data = JSON.stringify({ g: uid, m: message, mc: rgbaToHex(color), i: messageId });
         return { messageId, data };
-    },
-    mentionByUid: (uid, message, color) => {
-        const content = ` [@${uid}@] ${message}`;
-        return encoder.publicMessage(content, color);
-    },
-    mentionChannel: (channelId, message, color) => {
-        const content = ` [_${channelId}_] ${message}`;
-        return encoder.publicMessage(content, color);
-    },
-    replyMessage: (originalMsg, originalSender, originalMsgId, replyContent, color) => {
-        const quotedPart = `${originalMsg} (_hr) ${originalSender}_${originalMsgId} (hr_) `;
-        const data = JSON.stringify({
-            m: quotedPart + replyContent,
-            mc: rgbaToHex(color),
-            i: generateMessageId()
-        });
-        return { messageId: generateMessageId(), data };
     },
     like(uid, msg='') { return `+*${uid}${msg?' '+msg:''}`; },
     dislike(uid, msg='') { return `+!${uid}${msg?' '+msg:''}`; },
@@ -153,13 +145,9 @@ const encoder = {
         return `!h3["${map[type]}","${username}","${time}","${reason}"]`;
     },
     blacklist: (username, time, reason='') => `!hb["${username}","${time}","${reason}"]`,
-    whitelist: (username, time, reason='') => `!hw["${username}","${time}","${reason}"]`,
-    removeBlacklist: (username) => `!hr["${username}"]`,
-    removeWhitelist: (username) => `!hrw["${username}"]`,
-    setRoomNotice: (notice, background) => `!h2["${notice}","${background}"]`,
     setMaxUser: (num) => num ? `!h6["1${num}"]` : '!h6["1"]',
     deleteMessage: (channelId, msgId) => channelId.startsWith('private:') ? `v0*${channelId.split(':')[1]}#${msgId}` : `v0#${msgId}`,
-    broadcast: (message, color) => `~${JSON.stringify({ t: message, c: rgbaToHex(color), v: 0 })}`,
+    broadcast: (message, color) => `~${JSON.stringify({ t: message, c: rgbaToHex(color) })}`,
     mediaCard: (type, title, singer, cover, color, duration, bitRate=320, origin=null) => {
         const enc = s => s.replace(/[&<>"'/]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[s]));
         title = enc(title); singer = enc(singer); color = enc(color);
@@ -184,7 +172,6 @@ const encoder = {
     mediaOperation: (op, time) => `!15["${op}","${time}"]`,
     getUserProfileByName: (name) => `+-${name}`,
     getSelfInfo: () => '$1',
-    getUserList: () => 'r2',
     getMusicList: () => '%',
     getForum: () => ':-',
     getTasks: () => ':+',
@@ -202,10 +189,26 @@ const encoder = {
     getUserMomentsByUid: (uid) => `:*${uid}`,
     getFollowList: (uid) => `+^${uid}`,
     updateSelfInfo: (data) => `$2${JSON.stringify(data)}`,
-    moveRoom: (roomId, pass='') => JSON.stringify({ r: roomId, ...(pass && { rp: pass }) })
+    moveRoom: (roomId, pass='') => JSON.stringify({ r: roomId, ...(pass && { rp: pass }) }),
+    roomNotice: (content) => `!h4["${content}"]`,
+    whiteList: (username, action = 'add') => `!hw["${username}","${action}"]`,
+    getUserList: () => 'r2',
+    guestLogin: (options) => {
+        const { roomId, nickname, avatar = 'cartoon/600215', color = '614530', gender = '0' } = options;
+        return '*' + JSON.stringify({
+            r: roomId, n: nickname, i: avatar, nc: color, s: gender,
+            st: 'n', mo: '', uid: 'G' + Date.now() + Math.random().toString(36).substr(2, 8),
+            mb: '', mu: '01', fp: '@' + md5(nickname)
+        });
+    },
+    switchRoomLogin: (roomId, lastRoomId, username, passwordMd5, signature = '') => {
+        return '*' + JSON.stringify({
+            r: roomId, n: username, p: passwordMd5, lr: lastRoomId,
+            st: 'd', mo: signature, mb: '', mu: '01', fp: '@' + md5(username)
+        });
+    },
 };
 
-// ==================== 解码器 ====================
 function parsePublicMessage(msg) {
     if (!msg.startsWith('"')) return null;
     const message = msg.slice(1);
@@ -232,11 +235,6 @@ function parsePublicMessage(msg) {
             }
             if (quotes.length) reply = quotes;
         }
-        const mentions = { users: [], rooms: [] };
-        const userMentionMatch = realMsg.match(/\[\*([^\]]+)\*\]/g);
-        if (userMentionMatch) userMentionMatch.forEach(m => mentions.users.push(m.slice(2, -2)));
-        const roomMentionMatch = realMsg.match(/\[_([^\]]+)_\]/g);
-        if (roomMentionMatch) roomMentionMatch.forEach(m => mentions.rooms.push(m.slice(2, -2)));
         return {
             type: 'public',
             timestamp: Number(tmp[0]),
@@ -248,7 +246,6 @@ function parsePublicMessage(msg) {
             title: tmp[9] === "'108" ? '花瓣' : tmp[9],
             messageId: Number(tmp[10]),
             replyMessage: reply,
-            mentions: (mentions.users.length || mentions.rooms.length) ? mentions : undefined
         };
     }
     return null;
@@ -281,11 +278,6 @@ function parsePrivateMessage(msg) {
                 }
                 if (quotes.length) reply = quotes;
             }
-            const mentions = { users: [], rooms: [] };
-            const userMentionMatch = realMsg.match(/\[\*([^\]]+)\*\]/g);
-            if (userMentionMatch) userMentionMatch.forEach(m => mentions.users.push(m.slice(2, -2)));
-            const roomMentionMatch = realMsg.match(/\[_([^\]]+)_\]/g);
-            if (roomMentionMatch) roomMentionMatch.forEach(m => mentions.rooms.push(m.slice(2, -2)));
             return {
                 type: 'private',
                 timestamp: Number(tmp[0]),
@@ -296,28 +288,6 @@ function parsePrivateMessage(msg) {
                 color: tmp[5],
                 messageId: Number(tmp[10]),
                 replyMessage: reply,
-                mentions: (mentions.users.length || mentions.rooms.length) ? mentions : undefined
-            };
-        }
-    }
-    return null;
-}
-
-function parseAnonymousMessage(msg) {
-    if (!msg.startsWith('""')) return null;
-    const item = msg.slice(2).split('<');
-    for (let part of item) {
-        const tmp = part.split('>');
-        if (tmp.length === 11 && /^\d+$/.test(tmp[0]) && tmp[4] && tmp[4].endsWith('>>@')) {
-            return {
-                type: 'private_anonymous',
-                timestamp: Number(tmp[0]),
-                uid: tmp[1],
-                username: decode(tmp[2]),
-                avatar: parseAvatar(tmp[3]),
-                message: decode(tmp[4].slice(0, -3)),
-                color: tmp[5],
-                messageId: Number(tmp[10]),
             };
         }
     }
@@ -334,7 +304,9 @@ function parseMemberUpdate(msg) {
     const lastPart = parts[parts.length - 1];
     if (parts[3] === "'1") {
         let status = '';
-        for (let i = lastPart.length - 1; i >= 0; i--) if (lastPart[i] !== "'") { status = lastPart[i]; break; }
+        for (let i = lastPart.length - 1; i >= 0; i--) {
+            if (lastPart[i] !== "'") { status = lastPart[i]; break; }
+        }
         if (status === 'n' || status === 'd') {
             return {
                 type: 'join',
@@ -347,7 +319,14 @@ function parseMemberUpdate(msg) {
         }
     }
     if (parts[3] === "'3" && parts[parts.length-2] === '' && lastPart === '2') {
-        return { type: 'leave', timestamp, avatar: parseAvatar(avatar), username: decode(username), uid, isMove: false };
+        return {
+            type: 'leave',
+            timestamp,
+            avatar: parseAvatar(avatar),
+            username: decode(username),
+            uid,
+            isMove: false,
+        };
     }
     if (parts[3].startsWith("'2")) {
         const targetRoomId = parts[3].slice(2);
@@ -365,6 +344,41 @@ function parseMemberUpdate(msg) {
                 room: parts[10],
             };
         }
+    }
+    return null;
+}
+
+function parseMemberUpdateEnhanced(msg) {
+    const parts = msg.split('>');
+    if (parts.length < 10) return null;
+    const timestamp = parts[0].slice(1);
+    const avatar = parts[1];
+    const username = parts[2];
+    const color = parts[3];
+    const uid = parts[8];
+    if (parts[4] === "'1") {
+        return {
+            type: 'join',
+            timestamp,
+            avatar: parseAvatar(avatar),
+            username: decode(username),
+            color,
+            uid,
+            joinType: parts[5] === 'n' ? 'new' : parts[5] === 'd' ? 'reconnect' : 'unknown',
+        };
+    }
+    if (parts[4] && parts[4].startsWith("'2")) {
+        const targetRoomId = parts[4].length > 2 ? parts[4].slice(2) : null;
+        return {
+            type: 'leave',
+            timestamp,
+            avatar: parseAvatar(avatar),
+            username: decode(username),
+            color,
+            uid,
+            isMove: !!targetRoomId,
+            targetRoomId,
+        };
     }
     return null;
 }
@@ -434,16 +448,14 @@ function parseSelfMove(msg) {
 function parseBroadcast(msg) {
     if (!msg.startsWith('=')) return null;
     const parts = msg.slice(1).split('>');
-    if (parts.length < 13) return null;
+    if (parts.length < 8) return null;
     return {
-        type: 'broadcast',
-        username: decode(parts[0]),
+        username: parts[0],
         message: decode(parts[1]),
         color: parts[2],
         avatar: parseAvatar(parts[5]),
         timestamp: parts[6],
-        uid: parts[7],
-        messageId: parts[12],
+        messageId: parts[7],
     };
 }
 
@@ -453,124 +465,93 @@ function parseMailbox(msg) {
     for (let part of parts) {
         const tmp = part.split('>');
         if (tmp.length === 3) {
-            return { type: 'roomNotice', notice: decode(tmp[0]), background: tmp[1], timestamp: Number(tmp[2]) };
+            return {
+                type: 'roomNotice',
+                notice: decode(tmp[0]),
+                background: tmp[1],
+                timestamp: Number(tmp[2]),
+            };
         }
         if (tmp.length === 7) {
             if (/^'\^/.test(tmp[3])) {
-                return { type: 'follower', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6] };
+                return {
+                    type: 'follower',
+                    username: decode(tmp[0]),
+                    avatar: parseAvatar(tmp[1]),
+                    gender: tmp[2],
+                    background: tmp[4],
+                    timestamp: Number(tmp[5]),
+                    color: tmp[6],
+                };
             } else if (/^'\*/.test(tmp[3])) {
-                return { type: 'like', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6], message: decode(tmp[3].substring(2)) };
+                return {
+                    type: 'like',
+                    username: decode(tmp[0]),
+                    avatar: parseAvatar(tmp[1]),
+                    gender: tmp[2],
+                    background: tmp[4],
+                    timestamp: Number(tmp[5]),
+                    color: tmp[6],
+                    message: decode(tmp[3].substring(2)),
+                };
             } else if (/^'h/.test(tmp[3])) {
-                return { type: 'dislike', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6], message: decode(tmp[3].substring(2)) };
+                return {
+                    type: 'dislike',
+                    username: decode(tmp[0]),
+                    avatar: parseAvatar(tmp[1]),
+                    gender: tmp[2],
+                    background: tmp[4],
+                    timestamp: Number(tmp[5]),
+                    color: tmp[6],
+                    message: decode(tmp[3].substring(2)),
+                };
             } else if (/^'\$/.test(tmp[3])) {
-                const moneyMatch = tmp[3].match(/\$(\d+)/);
-                const msgMatch = tmp[3].match(/\$(\d+)\s*(.*)/);
-                return { type: 'payment', username: decode(tmp[0]), avatar: parseAvatar(tmp[1]), gender: tmp[2], money: moneyMatch ? parseInt(moneyMatch[1]) : 0, message: msgMatch ? decode(msgMatch[2] || '') : '', background: tmp[4], timestamp: Number(tmp[5]), color: tmp[6] };
+                return {
+                    type: 'payment',
+                    username: decode(tmp[0]),
+                    avatar: parseAvatar(tmp[1]),
+                    gender: tmp[2],
+                    money: parseInt(tmp[3].split(' ')[0].substring(1)),
+                    message: decode(tmp[3].split(' ')[1] || ''),
+                    background: tmp[4],
+                    timestamp: Number(tmp[5]),
+                    color: tmp[6],
+                };
             }
         }
     }
     return null;
 }
 
-function parseMoments(msg) {
-    if (!msg.startsWith('=')) return null;
-    const parts = msg.slice(1).split('>');
-    if (parts.length < 8) return null;
-    return {
-        type: 'moments',
-        username: decode(parts[0]),
-        avatar: parseAvatar(parts[1]),
-        gender: parts[2],
-        userId: parts[3],
-        content: decode(parts[4]),
-        timestamp: Number(parts[5]),
-        messageId: parts[6],
-        likes: parts[7]
-    };
-}
-
-function parseLeaderboard(msg) {
-    if (!msg.startsWith('`#')) return null;
-    const items = [];
-    const raw = msg.slice(2).split('<');
-    for (const item of raw) {
-        const parts = item.split('>');
-        if (parts.length >= 6) {
-            items.push({
-                rank: parts[0],
-                username: decode(parts[1]),
-                avatar: parseAvatar(parts[2]),
-                color: parts[3],
-                uid: parts[4],
-                value: parts[5]
-            });
-        }
-    }
-    return { type: 'leaderboard', items };
-}
-
-function parseStore(msg) {
-    if (!msg.startsWith('g-')) return null;
-    const parts = msg.slice(2).split('>');
-    if (parts.length < 10) return null;
-    return {
-        type: 'store',
-        shopId: parts[0],
-        shopIcon: parts[1],
-        shopName: decode(parts[2]),
-        shopDesc: decode(parts[3]),
-        shopBg: parts[4],
-        items: parts.slice(5)
-    };
-}
-
-function parseSellerCenter(msg) {
-    if (!msg.startsWith('g+')) return null;
-    return { type: 'sellerCenter', data: msg.slice(2) };
-}
-
-function parseFollowList(msg) {
-    if (!msg.startsWith('|^')) return null;
-    const items = msg.slice(2).split('<');
-    const follows = [];
-    for (const item of items) {
-        const parts = item.split("'");
-        if (parts.length >= 2) {
-            follows.push({
-                username: decode(parts[0]),
-                avatar: parts[1]
-            });
-        }
-    }
-    return { type: 'followList', follows };
-}
-
 function parseMusicMessage(msg) {
     if (!msg.startsWith('"')) return null;
     const message = msg.slice(1);
     const tmp = message.split('>');
-    if (tmp.length === 11 && /^\d+$/.test(tmp[0]) && tmp[3].startsWith('m__4@')) {
-        const musicData = tmp[3].split('>');
-        return {
-            type: 'music',
-            timestamp: Number(tmp[0]),
-            avatar: parseAvatar(tmp[1]),
-            username: decode(tmp[2]),
-            color: tmp[5],
-            uid: tmp[8],
-            title: tmp[9] === "'108" ? '花瓣' : tmp[9],
-            messageId: Number(tmp[10]),
-            musicName: decode(musicData[1]),
-            musicSinger: decode(musicData[2]),
-            musicPic: musicData[3],
-            musicColor: musicData[4],
-        };
+    if (tmp.length === 11 && /^\d+$/.test(tmp[0])) {
+        let realMsg = tmp[3];
+        if (realMsg.startsWith('m__4@')) {
+            const musicData = realMsg.split('>');
+            return {
+                type: 'music',
+                timestamp: Number(tmp[0]),
+                avatar: parseAvatar(tmp[1]),
+                username: decode(tmp[2]),
+                color: tmp[5],
+                uid: tmp[8],
+                title: tmp[9] === "'108" ? '花瓣' : tmp[9],
+                messageId: Number(tmp[10]),
+                musicName: decode(musicData[1]),
+                musicSinger: decode(musicData[2]),
+                musicPic: musicData[3],
+                musicColor: musicData[4],
+            };
+        }
     }
     return null;
 }
 
 function parseMessageDeleted(botUid, msg) {
-    const publicMatch = msg.match(/^v0#([^_]+)_(\d+)"?$/);
+    const publicMatch = msg.match(/^v0#([^_]+)_([^"]+)"?$/);
     if (publicMatch) {
         const [, userId, messageId] = publicMatch;
         return { type: 'message-deleted', userId, messageId, channelId: '', timestamp: Date.now() };
@@ -640,7 +621,95 @@ function parseMusicData(msg) {
     return { type: 'music_data', url };
 }
 
-// ==================== 机器人主类 ====================
+function parseUserListResponse(msg) {
+    if (!msg.startsWith('u2')) return null;
+    const users = [];
+    const parts = msg.slice(2).split('<');
+    for (const part of parts) {
+        const fields = part.split('>');
+        if (fields.length >= 9) {
+            users.push({
+                avatar: parseAvatar(fields[0]),
+                gender: fields[1],
+                username: decode(fields[2]),
+                color: fields[3],
+                room: fields[4],
+                uid: fields[8],
+                signature: fields[10] ? decode(fields[10]) : '',
+            });
+        }
+    }
+    return { type: 'userListResponse', users };
+}
+
+function parseFollowListResponse(msg) {
+    if (!msg.startsWith('|^')) return null;
+    const items = [];
+    const parts = msg.slice(2).split('<');
+    for (const part of parts) {
+        const fields = part.split('"');
+        if (fields.length >= 2) {
+            items.push({ username: fields[0], avatar: fields[1] });
+        }
+    }
+    return { type: 'followListResponse', items };
+}
+
+function parseMomentsResponse(msg) {
+    if (!msg.startsWith(':=')) return null;
+    const moments = [];
+    const parts = msg.slice(2).split('<');
+    for (const part of parts) {
+        const fields = part.split('>');
+        if (fields.length >= 8) {
+            moments.push({
+                username: decode(fields[0]),
+                avatar: parseAvatar(fields[1]),
+                gender: fields[2],
+                content: decode(fields[3]),
+                color: fields[4],
+                timestamp: Number(fields[5]),
+                messageId: fields[6],
+            });
+        }
+    }
+    return { type: 'momentsResponse', moments };
+}
+
+function parseStoreResponse(msg) {
+    if (!msg.startsWith('g-')) return null;
+    const stores = [];
+    const parts = msg.slice(2).split('<');
+    for (const part of parts) {
+        const fields = part.split('>');
+        if (fields.length >= 10) {
+            stores.push({
+                id: fields[0], logo: fields[1], name: decode(fields[2]), rating: fields[3],
+                tags: fields[4], description: decode(fields[5]), banner: fields[6],
+                createdAt: Number(fields[7]), icon: fields[8], level: fields[9],
+            });
+        }
+    }
+    return { type: 'storeResponse', stores };
+}
+
+function parseSelfInfoResponse(msg) {
+    if (!msg.startsWith('$?1')) return null;
+    const fields = msg.slice(3).split('"');
+    if (fields.length >= 16) {
+        return {
+            type: 'selfInfoResponse',
+            username: decode(fields[0]),
+            email: fields[1] || '',
+            color: fields[8] || '',
+            avatar: parseAvatar(fields[9] || ''),
+            uid: fields[10] || '',
+            signature: fields[14] ? decode(fields[14]) : '',
+        };
+    }
+    return null;
+}
+
 class IiroseBot extends EventEmitter {
     constructor(config) {
         super();
@@ -658,7 +727,6 @@ class IiroseBot extends EventEmitter {
         this.userListCache = new LRUCache({ max: 500 });
         this.roomListCache = new LRUCache({ max: 200 });
         this.currentRoomId = config.defaultRoomId;
-        this.lastRoomId = '';
         this.loggedIn = false;
         this.cronJobs = [];
         this.commands = new Map();
@@ -676,7 +744,8 @@ class IiroseBot extends EventEmitter {
     log(level, ...args) {
         const levels = { error:0, warn:1, info:2, debug:3 };
         if (levels[level] > levels[this.logLevel]) return;
-        console.log(...args);
+        const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}] `;
+        console.log(prefix, ...args);
     }
 
     getPluginConfig(pluginName) {
@@ -687,7 +756,10 @@ class IiroseBot extends EventEmitter {
         this.pluginConfigs.set(pluginName, cfg);
         return cfg;
     }
-    reloadPluginConfig(pluginName) { this.pluginConfigs.delete(pluginName); return this.getPluginConfig(pluginName); }
+    reloadPluginConfig(pluginName) {
+        this.pluginConfigs.delete(pluginName);
+        return this.getPluginConfig(pluginName);
+    }
     registerPluginConfigSchema(pluginName, schema) { this.pluginSchemas.set(pluginName, schema); }
 
     async connect() {
@@ -707,10 +779,16 @@ class IiroseBot extends EventEmitter {
         });
         this.ws.binaryType = 'arraybuffer';
         let encountered502 = false;
-        this.ws.on('open', () => { this.consecutive502Count = 0; this.onOpen(); });
+        this.ws.on('open', () => {
+            this.consecutive502Count = 0;
+            this.onOpen();
+        });
         this.ws.on('message', (data) => this.onMessage(data));
         this.ws.on('error', (err) => {
-            if (err.message && err.message.includes('502')) { encountered502 = true; this.consecutive502Count++; }
+            if (err.message && err.message.includes('502')) {
+                encountered502 = true;
+                this.consecutive502Count++;
+            }
             this.log('error', 'WebSocket错误', err.message);
         });
         this.ws.on('close', () => this.onClose(encountered502));
@@ -731,26 +809,16 @@ class IiroseBot extends EventEmitter {
         this.retryCount = 0;
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         const loginObj = {
-            r: this.currentRoomId,
-            lr: this.lastRoomId || '',
-            n: this.config.username,
-            p: md5(this.config.password),
-            st: 'n',
-            mo: this.config.signature,
-            mb: '',
-            mu: '01',
-            fp: `@${md5(this.config.username)}`,
+            r: this.currentRoomId, n: this.config.username, p: md5(this.config.password),
+            st: 'n', mo: this.config.signature, mb: '', mu: '01', fp: `@${md5(this.config.username)}`,
         };
         if (this.config.roomPassword) loginObj.rp = this.config.roomPassword;
-        const loginPack = '*' + JSON.stringify(loginObj);
-        this.ws.send(Buffer.from(loginPack));
+        this.ws.send(Buffer.from('*' + JSON.stringify(loginObj)));
     }
 
     onMessage(data) {
         const arr = new Uint8Array(data);
-        let msg;
-        if (arr[0] === 1) msg = zlib.unzipSync(arr.slice(1)).toString();
-        else msg = Buffer.from(arr).toString('utf8');
+        let msg = arr[0] === 1 ? zlib.unzipSync(arr.slice(1)).toString() : Buffer.from(arr).toString('utf8');
         if (msg.length < 500) this.log('debug', '收到消息', msg);
         if (this.retryCount !== 0) { this.retryCount = 0; this.log('debug', '收到消息，重试计数已重置'); }
 
@@ -772,15 +840,21 @@ class IiroseBot extends EventEmitter {
                 if (msg.startsWith('%*"5')) { this.log('error', '登录失败：房间密码错误'); this.disconnect(); return; }
                 if (msg.startsWith('%*"x')) { this.log('error', '登录失败：用户被封禁'); this.disconnect(); return; }
                 if (msg.startsWith('%*"n0')) { this.log('error', '登录失败：房间无法进入'); this.disconnect(); return; }
-                if (msg.startsWith('%')) { this.loggedIn = true; this.log('info', '登录成功！'); this.emit('login'); if (this.heartbeatTimer) clearInterval(this.heartbeatTimer); this.heartbeatTimer = setInterval(() => { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(''); }, HEARTBEAT_INTERVAL); }
+                if (msg.startsWith('%')) {
+                    this.loggedIn = true;
+                    this.log('info', '登录成功！');
+                    this.emit('login');
+                    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+                    this.heartbeatTimer = setInterval(() => { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(''); }, HEARTBEAT_INTERVAL);
+                }
             }
         }
         let decoded = null;
         try {
             if ((decoded = parsePublicMessage(msg))) this.emit('publicMessage', decoded);
             else if ((decoded = parsePrivateMessage(msg))) this.emit('privateMessage', decoded);
-            else if ((decoded = parseAnonymousMessage(msg))) this.emit('anonymousMessage', decoded);
             else if ((decoded = parseMemberUpdate(msg))) this.emit('memberUpdate', decoded);
+            else if ((decoded = parseMemberUpdateEnhanced(msg))) this.emit('memberUpdate', decoded);
             else if ((decoded = parseMusic(msg))) this.emit('music', decoded);
             else if ((decoded = parseBankCallback(msg))) this.emit('bank', decoded);
             else if ((decoded = parseStock(msg))) this.emit('stock', decoded);
@@ -788,11 +862,6 @@ class IiroseBot extends EventEmitter {
             else if ((decoded = parseSelfMove(msg))) this.emit('selfMove', decoded);
             else if ((decoded = parseBroadcast(msg))) this.emit('broadcast', decoded);
             else if ((decoded = parseMailbox(msg))) this.emit('mailbox', decoded);
-            else if ((decoded = parseMoments(msg))) this.emit('moments', decoded);
-            else if ((decoded = parseLeaderboard(msg))) this.emit('leaderboard', decoded);
-            else if ((decoded = parseStore(msg))) this.emit('store', decoded);
-            else if ((decoded = parseSellerCenter(msg))) this.emit('sellerCenter', decoded);
-            else if ((decoded = parseFollowList(msg))) this.emit('followList', decoded);
             else if ((decoded = parseMusicMessage(msg))) this.emit('musicMessage', decoded);
             else if ((decoded = parseMessageDeleted(this.config.uid, msg))) this.emit('messageDeleted', decoded);
             else if (msg.startsWith('%1')) {
@@ -809,7 +878,12 @@ class IiroseBot extends EventEmitter {
                     }
                     this.emit('bulkData', bulk);
                 } else this.log('warn', `未知大包格式: ${msg.substring(0,100)}`);
-            } else if (msg.startsWith('%')) this.log('warn', `未知格式消息: ${msg.substring(0,100)}`);
+            } else if ((decoded = parseUserListResponse(msg))) this.emit('userListResponse', decoded);
+            else if ((decoded = parseFollowListResponse(msg))) this.emit('followListResponse', decoded);
+            else if ((decoded = parseMomentsResponse(msg))) this.emit('momentsResponse', decoded);
+            else if ((decoded = parseStoreResponse(msg))) this.emit('storeResponse', decoded);
+            else if ((decoded = parseSelfInfoResponse(msg))) this.emit('selfInfoResponse', decoded);
+            else if (msg.startsWith('%')) this.log('warn', `未知格式消息: ${msg.substring(0,100)}`);
             else if (msg.length < 200) this.log('debug', `未识别的消息: ${msg}`);
         } catch (err) { this.log('error', `消息解析异常: ${err.message}\n原始消息: ${msg.substring(0,200)}`); }
     }
@@ -822,8 +896,9 @@ class IiroseBot extends EventEmitter {
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         let delay;
         if (was502) {
-            delay = Math.min(30000 * Math.pow(1.5, this.consecutive502Count - 1), 300000);
-            this.log('info', `检测到 502 错误，${Math.round(delay/1000)}秒后重连... (连续 502 次数: ${this.consecutive502Count})`);
+            const baseDelay = 30000, maxDelay = 300000;
+            delay = Math.min(baseDelay * Math.pow(1.5, this.consecutive502Count - 1), maxDelay);
+            this.log('info', `检测到502错误，${Math.round(delay/1000)}秒后重连 (连续次数:${this.consecutive502Count})`);
         } else {
             delay = Math.min(RETRY_BASE_DELAY + this.retryCount * 5000, MAX_RETRY_DELAY);
             this.retryCount++;
@@ -853,19 +928,6 @@ class IiroseBot extends EventEmitter {
         this.ws.send(Buffer.from(data));
     }
 
-    // 媒体快捷发送
-    sendImage(url, color) {
-        const formatted = url.endsWith('#e') ? url : `${url}#e`;
-        return this.sendMessage(formatted, color);
-    }
-    sendVoice(url, color) {
-        if (!url.endsWith('.weba')) throw new Error('语音 URL 必须以 .weba 结尾');
-        return this.sendMessage(url, color);
-    }
-    sendVideo(url, color) {
-        return this.sendMessage(`[${url}]`, color);
-    }
-
     sendRaw(data) { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(Buffer.from(data)); }
 
     sendAndWait(payload, prefix, timeout = 10000) {
@@ -879,15 +941,10 @@ class IiroseBot extends EventEmitter {
     async moveToRoom(roomId, password = '') {
         if (roomId === this.currentRoomId) return;
         this.log('info', `移动到房间 ${roomId}${password ? ' (有密码)' : ''}`);
-        this.lastRoomId = this.currentRoomId;
         this.currentRoomId = roomId;
         const oldPass = this.config.roomPassword;
         if (password) this.config.roomPassword = password;
-        if (this.ws) {
-            this.ws.send(Buffer.from(`m${roomId}`));
-            await new Promise(r => setTimeout(r, 500));
-            this.ws.close();
-        }
+        if (this.ws) this.ws.close();
         return new Promise((resolve, reject) => {
             const onLogin = () => { this.off('login', onLogin); if (password) this.config.roomPassword = oldPass; resolve(); };
             const onError = (err) => { this.off('login', onLogin); if (password) this.config.roomPassword = oldPass; reject(err); };
@@ -935,7 +992,7 @@ class IiroseBot extends EventEmitter {
         return lines.join('\n');
     }
 
-    async start() { if (this.isRunning) return; this.isRunning = true; this.retryCount = 0; await this.connect(); }
+    async start() { if (this.isRunning) return; this.isRunning = true; this.retryCount = 0; this.consecutive502Count = 0; await this.connect(); }
     async stop() { this.cronJobs.forEach(job => job.stop()); this.isRunning = false; this.disconnect(); }
 
     async unloadPlugin(pluginName) {
@@ -957,20 +1014,18 @@ class IiroseBot extends EventEmitter {
         delete require.cache[require.resolve(pluginPath)];
         const pluginFunc = require(pluginPath);
         if (typeof pluginFunc !== 'function') throw new Error('插件导出不是函数');
-        const npmDeps = pluginFunc.npmDependencies || [];
-        await ensureNpmDependencies(pluginName, npmDeps);
         await pluginFunc(this);
         const name = pluginFunc.name || pluginName;
         this.pluginsMeta.set(name, {
             name, description: pluginFunc.description, usage: pluginFunc.usage,
-            dependencies: pluginFunc.dependencies || [], file, loaded: true, enabled: true,
+            dependencies: pluginFunc.dependencies, file, loaded: true, enabled: true,
             destroy: pluginFunc.destroy || null
         });
         if (pluginFunc.configSchema) this.registerPluginConfigSchema(name, pluginFunc.configSchema);
         console.log(`插件 ${name} 动态加载成功`);
     }
     async hotReloadPlugin(pluginName) {
-        try { await this.unloadPlugin(pluginName); } catch (e) { this.log('warn', `卸载插件 ${pluginName} 时出错，继续尝试加载: ${e.message}`); }
+        try { await this.unloadPlugin(pluginName); } catch (e) { this.log('warn', `卸载插件 ${pluginName} 时出错: ${e.message}`); }
         await this.loadPlugin(pluginName);
     }
     async reloadPluginConfig(pluginName) {
@@ -982,7 +1037,6 @@ class IiroseBot extends EventEmitter {
     }
 }
 
-// ==================== 配置管理 ====================
 function loadMainConfig() {
     const cfgPath = path.join(__dirname, 'data', 'config.json');
     try { if (fs.existsSync(cfgPath)) return JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch(e) {}
@@ -997,16 +1051,19 @@ function saveEnabledPlugins(enabled) {
     const file = path.join(__dirname, 'data', 'plugins_enabled.json');
     try { fs.writeFileSync(file, JSON.stringify(enabled, null, 2)); } catch(e) { console.error('保存插件状态失败', e); }
 }
-async function ensureNpmDependencies(pluginName, deps) {
-    if (!deps || deps.length === 0) return;
+
+async function ensureNpmDependencies(pluginName, npmDeps) {
+    if (!npmDeps || npmDeps.length === 0) return;
     const missing = [];
-    for (const dep of deps) try { require.resolve(dep); } catch(e) { missing.push(dep); }
+    for (const dep of npmDeps) { try { require.resolve(dep); } catch(e) { missing.push(dep); } }
     if (missing.length === 0) return;
     console.log(`插件 ${pluginName} 缺失 npm 依赖: ${missing.join(', ')}，正在自动安装...`);
-    for (const pkg of missing) await execPromise(`npm install ${pkg}`, { cwd: __dirname });
+    for (const pkg of missing) {
+        try { await execPromise(`npm install ${pkg}`, { cwd: __dirname }); console.log(`  安装 ${pkg} 成功`); }
+        catch (e) { console.error(`  自动安装 ${pkg} 失败，请手动执行 npm install ${pkg}`); }
+    }
 }
 
-// ==================== 插件加载器 ====================
 async function loadPlugins(bot) {
     const dataDir = path.join(__dirname, 'data');
     const pluginsDataDir = path.join(dataDir, 'plugins');
@@ -1051,53 +1108,51 @@ async function loadPlugins(bot) {
         visiting.delete(name);
         if (plugin && plugin.enabled) sorted.push(name);
     }
-    for (const [name, plugin] of plugins) if (plugin.enabled) try { visit(name); } catch(e) { console.error(`插件 ${name} 依赖错误:`, e.message); plugin.enabled = false; enabledMap[name] = false; saveEnabledPlugins(enabledMap); }
+    for (const [name, plugin] of plugins) {
+        if (plugin.enabled) {
+            try { visit(name); } catch(e) { console.error(`插件 ${name} 依赖错误:`, e.message); plugin.enabled = false; enabledMap[name] = false; saveEnabledPlugins(enabledMap); }
+        }
+    }
 
     for (const name of sorted) {
         const plugin = plugins.get(name);
         if (plugin && !plugin.loaded) {
             try {
                 await ensureNpmDependencies(plugin.name, plugin.npmDeps);
-                await plugin.func(bot);
+                const result = await plugin.func(bot);
                 bot.pluginsMeta.set(plugin.name, {
                     name: plugin.name, description: plugin.func.description, usage: plugin.func.usage,
                     dependencies: plugin.pluginDeps, file: plugin.file, loaded: true, enabled: true,
-                    destroy: plugin.func.destroy || null
+                    destroy: (result && result.destroy) || plugin.func.destroy || null
                 });
                 if (plugin.func.configSchema) bot.registerPluginConfigSchema(plugin.name, plugin.func.configSchema);
                 console.log(`插件加载成功: ${plugin.name} (${plugin.file})`);
                 plugin.loaded = true;
-            } catch(err) { console.error(`插件 ${plugin.name} 执行失败:`, err); plugin.enabled = false; enabledMap[name] = false; saveEnabledPlugins(enabledMap); }
+            } catch(err) {
+                console.error(`插件 ${plugin.name} 执行失败:`, err);
+                plugin.enabled = false; enabledMap[name] = false; saveEnabledPlugins(enabledMap);
+            }
         }
     }
-    for (const [name, plugin] of plugins) if (!plugin.loaded && plugin.enabled) console.warn(`插件 ${name} 因依赖缺失未加载`);
 }
 
-// ==================== 主程序 ====================
 const userConfig = loadMainConfig();
 const botConfig = {
-    username: userConfig.username || '',
-    password: userConfig.password || '',
-    defaultRoomId: userConfig.defaultRoomId || '',
-    roomPassword: userConfig.roomPassword || '',
-    signature: userConfig.signature || 'Powered by Node.js',
-    color: userConfig.color || '66ccff',
-    logLevel: userConfig.logLevel || 'info',
-    ownerUid: userConfig.ownerUid || '',
-    ownerName: userConfig.ownerName || '',
-    adminList: userConfig.adminList || [],
+    username: userConfig.username || '', password: userConfig.password || '',
+    defaultRoomId: userConfig.defaultRoomId || '', roomPassword: userConfig.roomPassword || '',
+    signature: userConfig.signature || 'Powered by Node.js', color: userConfig.color || '66ccff',
+    logLevel: userConfig.logLevel || 'info', ownerUid: userConfig.ownerUid || '',
+    ownerName: userConfig.ownerName || '', adminList: userConfig.adminList || [],
 };
 
 if (!botConfig.username || !botConfig.password) {
     console.error('错误：未配置机器人账号或密码！');
     console.error('请通过 Web 管理面板（http://localhost:' + WEBUI_PORT + '）进行配置。');
-    console.error('配置保存后请重启机器人。');
 }
 
 const bot = new IiroseBot(botConfig);
 bot.encoder = encoder;
 
-// 内置命令
 bot.registerHelp('help', '显示本帮助信息', '发送 "help" 即可');
 bot.registerHelp('ping', '机器人会回复 "pong"', '发送 "ping" 即可');
 
@@ -1124,7 +1179,6 @@ bot.on('privateMessage', handleHelp);
 bot.on('publicMessage', handlePing);
 bot.on('privateMessage', handlePing);
 
-// ==================== Web 管理面板 ====================
 const app = express();
 const webuiPath = path.join(__dirname, 'webui');
 if (!fs.existsSync(webuiPath)) fs.mkdirSync(webuiPath, { recursive: true });
@@ -1207,7 +1261,8 @@ app.get('/api/plugins/deps-graph', (req, res) => {
     const enabledMap = loadEnabledPlugins();
     for (const [name, meta] of bot.pluginsMeta) {
         nodes.push({ id: name, label: name, enabled: meta.enabled });
-        for (const dep of (meta.dependencies || [])) edges.push({ from: name, to: dep });
+        const deps = meta.dependencies || [];
+        for (const dep of deps) edges.push({ from: name, to: dep });
     }
     const pluginsDir = path.join(__dirname, 'plugins');
     if (fs.existsSync(pluginsDir)) {
@@ -1216,36 +1271,27 @@ app.get('/api/plugins/deps-graph', (req, res) => {
             const pluginName = file.replace(/\.js$/, '');
             if (!nodes.find(n => n.id === pluginName)) {
                 nodes.push({ id: pluginName, label: pluginName, enabled: enabledMap[pluginName] !== false });
-                try {
-                    const pf = require(path.join(pluginsDir, file));
-                    for (const dep of (pf.dependencies||[])) edges.push({ from: pluginName, to: dep });
-                } catch(e) {}
+                try { const pf = require(path.join(pluginsDir, file)); for (const dep of (pf.dependencies||[])) edges.push({ from: pluginName, to: dep }); } catch(e) {}
             }
         }
     }
     res.json({ nodes, edges });
 });
 
-app.get('/api/logs', (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    res.json(recentLogs.slice(-limit));
-});
+app.get('/api/logs', (req, res) => { const limit = parseInt(req.query.limit) || 20; res.json(recentLogs.slice(-limit)); });
 
 app.get('/api/config/main', (req, res) => {
     const cfgPath = path.join(__dirname, 'data', 'config.json');
-    try { const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}; res.json(cfg); }
-    catch(e) { res.status(500).json({ error: '读取主配置失败' }); }
+    try { res.json(fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}); } catch(e) { res.status(500).json({ error: '读取主配置失败' }); }
 });
 app.post('/api/config/main', (req, res) => {
     const cfgPath = path.join(__dirname, 'data', 'config.json');
-    try { fs.writeFileSync(cfgPath, JSON.stringify(req.body, null, 2)); res.json({ success: true }); }
-    catch(e) { res.status(500).json({ error: '保存主配置失败' }); }
+    try { fs.writeFileSync(cfgPath, JSON.stringify(req.body, null, 2)); res.json({ success: true }); } catch(e) { res.status(500).json({ error: '保存主配置失败' }); }
 });
 
 app.get('/api/config/plugin/:pluginName', (req, res) => {
     const cfgPath = path.join(__dirname, 'data', 'plugins', req.params.pluginName, 'config.json');
-    try { const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}; res.json(cfg); }
-    catch(e) { res.status(500).json({ error: '读取插件配置失败' }); }
+    try { res.json(fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {}); } catch(e) { res.status(500).json({ error: '读取插件配置失败' }); }
 });
 app.post('/api/config/plugin/:pluginName', (req, res) => {
     const pluginName = req.params.pluginName;
@@ -1259,10 +1305,7 @@ app.post('/api/config/plugin/:pluginName', (req, res) => {
     } catch(e) { res.status(500).json({ error: '保存插件配置失败' }); }
 });
 
-app.get('/api/plugin/schema/:pluginName', (req, res) => {
-    const schema = bot.pluginSchemas.get(req.params.pluginName) || {};
-    res.json(schema);
-});
+app.get('/api/plugin/schema/:pluginName', (req, res) => { res.json(bot.pluginSchemas.get(req.params.pluginName) || {}); });
 
 app.post('/api/plugin/toggle', async (req, res) => {
     const { pluginName, enabled } = req.body;
@@ -1271,19 +1314,115 @@ app.post('/api/plugin/toggle', async (req, res) => {
     if (enabled === wasEnabled) return res.json({ success: true });
     enabledMap[pluginName] = enabled;
     saveEnabledPlugins(enabledMap);
-    if (enabled) {
-        try { await bot.loadPlugin(pluginName); res.json({ success: true }); } catch(err) { res.status(500).json({ error: err.message }); }
-    } else {
-        try { await bot.unloadPlugin(pluginName); res.json({ success: true }); } catch(err) { res.status(500).json({ error: err.message }); }
-    }
+    try {
+        if (enabled) await bot.loadPlugin(pluginName);
+        else await bot.unloadPlugin(pluginName);
+        res.json({ success: true });
+    } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/plugin/reload/:pluginName', async (req, res) => {
-    try { await bot.hotReloadPlugin(req.params.pluginName); res.json({ success: true }); } catch(err) { res.status(500).json({ error: err.message }); }
+    try { await bot.hotReloadPlugin(req.params.pluginName); res.json({ success: true }); }
+    catch(err) { console.error(`重载插件 ${req.params.pluginName} 失败:`, err); res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/plugin/reload-config/:pluginName', async (req, res) => {
-    try { const newCfg = await bot.reloadPluginConfig(req.params.pluginName); res.json({ success: true, config: newCfg }); } catch(err) { res.status(500).json({ error: err.message }); }
+    try { const newCfg = await bot.reloadPluginConfig(req.params.pluginName); res.json({ success: true, config: newCfg }); }
+    catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// ==================== 插件市场 API ====================
+const PLUGINS_DIR = path.join(__dirname, 'plugins');
+
+function compareVersions(v1, v2) {
+    const toNum = v => v.split('.').map(n => parseInt(n, 10) || 0);
+    const a1 = toNum(v1), a2 = toNum(v2);
+    for (let i = 0; i < Math.max(a1.length, a2.length); i++) {
+        const n1 = a1[i] || 0, n2 = a2[i] || 0;
+        if (n1 !== n2) return n1 - n2;
+    }
+    return 0;
+}
+
+app.get('/api/market/list', async (req, res) => {
+    if (!fetch) {
+        return res.status(500).json({ error: 'fetch 不可用，请升级 Node.js 或安装 node-fetch' });
+    }
+    try {
+        const response = await fetch(MARKET_INDEX_URL);
+        if (!response.ok) throw new Error(`获取市场索引失败: ${response.status}`);
+        const data = await response.json();
+        const installedPlugins = loadEnabledPlugins();
+        const pluginsWithStatus = data.plugins.map(p => {
+            const localPath = path.join(PLUGINS_DIR, `${p.name}.js`);
+            let installed = false, installedVersion = null, hasUpdate = false;
+            if (fs.existsSync(localPath)) {
+                installed = true;
+                try {
+                    const pluginModule = require(localPath);
+                    installedVersion = pluginModule.version || '0.0.0';
+                    hasUpdate = compareVersions(p.version, installedVersion) > 0;
+                } catch (e) {}
+            }
+            return {
+                ...p,
+                installed,
+                installedVersion,
+                hasUpdate,
+                enabled: installed && installedPlugins[p.name] !== false
+            };
+        });
+        res.json({ success: true, plugins: pluginsWithStatus });
+    } catch (err) {
+        console.error('获取市场列表失败:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/market/install', async (req, res) => {
+    if (!fetch) return res.status(500).json({ error: 'fetch 不可用' });
+    const { pluginName, downloadUrl, version } = req.body;
+    if (!pluginName || !downloadUrl) return res.status(400).json({ error: '缺少必要参数' });
+    const targetPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
+    const backupPath = targetPath + '.backup';
+    try {
+        if (fs.existsSync(targetPath)) fs.copyFileSync(targetPath, backupPath);
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error(`下载失败: ${response.status}`);
+        const code = await response.text();
+        fs.writeFileSync(targetPath, code, 'utf8');
+        delete require.cache[require.resolve(targetPath)];
+        if (bot && bot.pluginsMeta) {
+            const enabledMap = loadEnabledPlugins();
+            if (enabledMap[pluginName] !== false) {
+                try { await bot.hotReloadPlugin(pluginName); }
+                catch (e) { console.warn(`热重载插件 ${pluginName} 失败:`, e.message); }
+            }
+        }
+        if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
+        res.json({ success: true, message: `插件 ${pluginName} 安装成功` });
+    } catch (err) {
+        console.error('安装插件失败:', err);
+        if (fs.existsSync(backupPath)) { fs.copyFileSync(backupPath, targetPath); fs.unlinkSync(backupPath); }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/market/uninstall', async (req, res) => {
+    const { pluginName } = req.body;
+    const targetPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
+    try {
+        if (!fs.existsSync(targetPath)) return res.status(404).json({ error: '插件文件不存在' });
+        if (bot.pluginsMeta && bot.pluginsMeta.has(pluginName)) await bot.unloadPlugin(pluginName);
+        fs.unlinkSync(targetPath);
+        const enabledMap = loadEnabledPlugins();
+        delete enabledMap[pluginName];
+        saveEnabledPlugins(enabledMap);
+        res.json({ success: true, message: `插件 ${pluginName} 已卸载` });
+    } catch (err) {
+        console.error('卸载插件失败:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/system/restart', (req, res) => {
