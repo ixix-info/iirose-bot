@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   蔷薇花园机器人 一键安装脚本${NC}"
+echo -e "${GREEN}   蔷薇花园机器人 一键安装脚本 ${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # 检测系统类型
@@ -24,7 +24,7 @@ detect_os() {
     fi
 }
 
-# 安装 Node.js 18+ (根据不同系统)
+# 安装 Node.js 18+
 install_node() {
     echo -e "${YELLOW}正在安装 Node.js 18+...${NC}"
     case "$OS" in
@@ -54,7 +54,7 @@ install_node() {
     esac
 }
 
-# 安装 git
+# 安装 git (仅用于稀疏检出，Termux 必须)
 install_git() {
     echo -e "${YELLOW}正在安装 git...${NC}"
     case "$OS" in
@@ -100,7 +100,7 @@ if ! command -v git &> /dev/null; then
     install_git
 fi
 
-# 设置安装目录 (Termux 使用内部存储，避免权限问题)
+# 设置安装目录
 if [ "$OS" = "termux" ]; then
     INSTALL_DIR="$HOME/iirose-bot"
 else
@@ -113,19 +113,23 @@ if [ -d "$INSTALL_DIR" ]; then
     rm -rf "$INSTALL_DIR"
 fi
 
-# 克隆仓库
-echo -e "${YELLOW}正在克隆仓库...${NC}"
-git clone https://github.com/ixix-info/iirose-bot.git "$INSTALL_DIR"
+# 创建目录
+mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-# 安装依赖
-echo -e "${YELLOW}正在安装 Node.js 依赖...${NC}"
-npm install ws cron express lru-cache winston winston-daily-rotate-file express-session
+# 使用 git 稀疏检出仅下载必要文件
+echo -e "${YELLOW}正在下载核心文件...${NC}"
+git clone --depth 1 --filter=blob:none --no-checkout https://github.com/ixix-info/iirose-bot.git temp_repo
+mv temp_repo/.git .
+rmdir temp_repo
+git sparse-checkout init --cone
+git sparse-checkout set bot.js webui package.json
+git checkout
 
 # 创建必要目录
 mkdir -p data plugins webui logs
 
-# 生成默认配置文件
+# 生成默认主配置文件
 cat > data/config.json <<EOF
 {
     "username": "",
@@ -145,12 +149,15 @@ cat > data/plugins_enabled.json <<EOF
 {}
 EOF
 
+# 安装依赖
+echo -e "${YELLOW}正在安装 Node.js 依赖...${NC}"
+npm install ws cron express lru-cache winston winston-daily-rotate-file express-session
+
 # 下载 ECharts（用于 Web 图表）
 echo -e "${YELLOW}下载 ECharts 本地库...${NC}"
-mkdir -p webui
-curl -o webui/echarts.min.js https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js
+curl -L -o webui/echarts.min.js https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js
 
-# 创建启动脚本（使用 Termux 正确的解释器路径）
+# 创建启动脚本
 if [ "$OS" = "termux" ]; then
     SHEBANG="#!/data/data/com.termux/files/usr/bin/bash"
 else
@@ -167,7 +174,7 @@ node bot.js
 EOF
 chmod +x start.sh
 
-# Termux 特殊处理：创建快捷启动文件（使用正确解释器）
+# Termux 快捷方式
 if [ "$OS" = "termux" ]; then
     mkdir -p "$HOME/.shortcuts"
     cat > "$HOME/.shortcuts/iirose-bot" <<EOF
