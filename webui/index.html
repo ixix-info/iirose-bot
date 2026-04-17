@@ -5,189 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>机器人管理面板</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f2f5;
-            color: #333;
+            margin: 0; padding: 0;
+            background-color: #f0f2f5; color: #333;
         }
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+        .app-container { display: flex; flex-direction: column; height: 100vh; }
         header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #2c3e50; color: white;
+            padding: 1rem 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-        }
+        header h1 { margin: 0; font-size: 1.5rem; }
         nav {
-            background-color: #34495e;
-            display: flex;
-            gap: 0.5rem;
+            background-color: #34495e; display: flex; gap: 0.5rem;
             padding: 0 2rem;
         }
         nav button {
-            background: none;
-            border: none;
-            color: #ecf0f1;
-            padding: 0.8rem 1.5rem;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.2s;
-            border-bottom: 3px solid transparent;
+            background: none; border: none; color: #ecf0f1;
+            padding: 0.8rem 1.5rem; font-size: 1rem; cursor: pointer;
+            transition: 0.2s; border-bottom: 3px solid transparent;
         }
-        nav button:hover {
-            background-color: #2c3e50;
-        }
-        nav button.active {
-            border-bottom-color: #3498db;
-            color: white;
-            font-weight: bold;
-        }
-        main {
-            flex: 1;
-            padding: 2rem;
-            overflow-y: auto;
-        }
-        .page {
-            display: none;
-        }
-        .page.active {
-            display: block;
-        }
+        nav button:hover { background-color: #2c3e50; }
+        nav button.active { border-bottom-color: #3498db; color: white; font-weight: bold; }
+        main { flex: 1; padding: 2rem; overflow-y: auto; }
+        .page { display: none; }
+        .page.active { display: block; }
         .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 1.5rem;
+            background: white; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem;
             margin-bottom: 2rem;
         }
-        .card h2 {
-            margin-top: 0;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 0.5rem;
-        }
+        .card h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
         .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 1rem;
         }
-        .status-item {
-            background: #f8f9fa;
-            padding: 0.8rem;
-            border-radius: 6px;
-        }
-        .status-item strong {
-            display: inline-block;
-            width: 100px;
-        }
+        .status-item { background: #f8f9fa; padding: 0.8rem; border-radius: 6px; }
+        .status-item strong { display: inline-block; width: 100px; }
         .color-preview {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            vertical-align: middle;
-            margin-right: 8px;
+            display: inline-block; width: 20px; height: 20px;
+            border-radius: 4px; vertical-align: middle; margin-right: 8px;
             border: 1px solid #ccc;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            text-align: left;
-            padding: 0.75rem;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
         .config-row {
-            margin-bottom: 1rem;
-            display: flex;
-            flex-wrap: wrap;
+            margin-bottom: 1rem; display: flex; flex-wrap: wrap;
             align-items: flex-start;
         }
-        .config-row label {
-            width: 150px;
-            font-weight: bold;
-            padding-top: 0.5rem;
-        }
+        .config-row label { width: 150px; font-weight: bold; padding-top: 0.5rem; }
         .config-row input, .config-row select, .config-row textarea {
-            flex: 1;
-            padding: 0.5rem;
-            border: 1px solid #ccc;
+            flex: 1; padding: 0.5rem; border: 1px solid #ccc;
             border-radius: 4px;
         }
         button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: 0.2s;
+            background-color: #3498db; color: white; border: none;
+            padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer;
+            font-size: 0.9rem; transition: 0.2s;
         }
-        button:hover {
-            background-color: #2980b9;
-        }
-        button.danger {
-            background-color: #e74c3c;
-        }
-        button.danger:hover {
-            background-color: #c0392b;
-        }
-        .mode-switch {
-            margin-bottom: 1rem;
-            display: flex;
-            gap: 0.5rem;
-        }
+        button:hover { background-color: #2980b9; }
+        button.danger { background-color: #e74c3c; }
+        button.danger:hover { background-color: #c0392b; }
+        button.success { background-color: #27ae60; }
+        button.success:hover { background-color: #219a52; }
+        .mode-switch { margin-bottom: 1rem; display: flex; gap: 0.5rem; }
         .mode-switch button {
-            background-color: #ecf0f1;
-            color: #2c3e50;
+            background-color: #ecf0f1; color: #2c3e50;
         }
-        .mode-switch button.active {
-            background-color: #3498db;
-            color: white;
-        }
-        textarea, pre {
-            font-family: monospace;
-        }
+        .mode-switch button.active { background-color: #3498db; color: white; }
         .logs-box {
-            background: #1e1e2f;
-            color: #f8f8f2;
-            padding: 1rem;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
+            background: #1e1e2f; color: #f8f8f2; padding: 1rem;
+            border-radius: 6px; font-family: monospace; font-size: 0.85rem;
+            height: 300px; overflow-y: auto; white-space: pre-wrap;
         }
-        .flex-btns {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
+        .flex-btns { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .market-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 12px;
+            font-size: 0.8rem; font-weight: bold;
         }
+        .tag-installed { background-color: #d4edda; color: #155724; }
+        .tag-update { background-color: #fff3cd; color: #856404; }
+        .tag-notinstalled { background-color: #f8d7da; color: #721c24; }
         @media (max-width: 700px) {
-            .config-row label {
-                width: 100%;
-                margin-bottom: 0.3rem;
-            }
-            nav button {
-                padding: 0.5rem 1rem;
-            }
+            .config-row label { width: 100%; margin-bottom: 0.3rem; }
+            nav button { padding: 0.5rem 1rem; }
         }
     </style>
     <script src="echarts.min.js"></script>
@@ -200,6 +103,7 @@
     <nav>
         <button data-page="dashboard" class="active">仪表盘</button>
         <button data-page="plugins">插件管理</button>
+        <button data-page="market">插件市场</button>
         <button data-page="config">配置中心</button>
         <button data-page="chart">图表</button>
     </nav>
@@ -222,9 +126,7 @@
             <div class="card">
                 <h2>已加载插件</h2>
                 <table id="plugins-table">
-                    <thead>
-                        <tr><th>插件名</th><th>命令数量</th></tr>
-                    </thead>
+                    <thead><tr><th>插件名</th><th>命令数量</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -250,6 +152,26 @@
                 <div class="flex-btns">
                     <button id="restart-btn" class="danger">重启机器人</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- 插件市场页面 -->
+        <div id="market-view" class="page">
+            <div class="card">
+                <h2>插件市场</h2>
+                <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
+                    <button id="refresh-market-btn">刷新列表</button>
+                    <span id="market-last-update" style="color: #666; line-height: 2.2;"></span>
+                </div>
+                <table id="market-table">
+                    <thead>
+                        <tr>
+                            <th>名称</th><th>版本</th><th>描述</th><th>作者</th>
+                            <th>依赖 (npm)</th><th>状态</th><th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
 
@@ -289,7 +211,7 @@
         <!-- 图表页面 -->
         <div id="chart-view" class="page">
             <div class="card">
-                <h2>在线人数趋势（最近24小时）</h2>
+                <h2>当前房间在线人数趋势</h2>
                 <div id="online-chart" style="height: 400px;"></div>
             </div>
         </div>
@@ -297,20 +219,19 @@
 </div>
 
 <script>
-    // ---------- 全局变量 ----------
     let currentPage = 'dashboard';
     let mainConfigMode = 'form';
     let pluginConfigMode = 'form';
     let ws = null;
 
-    // ---------- HTTP 工具 ----------
     function httpGet(url, callback) {
-        var xhr = new XMLHttpRequest();
+        const xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    try { var data = JSON.parse(xhr.responseText); callback(null, data); } catch (e) { callback(e, null); }
+                    try { callback(null, JSON.parse(xhr.responseText)); }
+                    catch (e) { callback(e, null); }
                 } else { callback(new Error('HTTP ' + xhr.status), null); }
             }
         };
@@ -318,729 +239,445 @@
     }
 
     function httpPost(url, data, callback) {
-        var xhr = new XMLHttpRequest();
+        const xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    try { var res = JSON.parse(xhr.responseText); callback(null, res); } catch (e) { callback(e, null); }
+                    try { callback(null, JSON.parse(xhr.responseText)); }
+                    catch (e) { callback(e, null); }
                 } else { callback(new Error('HTTP ' + xhr.status), null); }
             }
         };
         xhr.send(JSON.stringify(data));
     }
 
-    // ---------- WebSocket 日志 ----------
     function connectWebSocket() {
-        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = new WebSocket(protocol + '//' + window.location.host);
         ws.onmessage = function(event) {
-            var log = JSON.parse(event.data);
-            var logContainer = document.getElementById('logs');
-            var currentText = logContainer.innerText;
+            const log = JSON.parse(event.data);
+            const logContainer = document.getElementById('logs');
+            const currentText = logContainer.innerText;
             logContainer.innerText = '[' + log.time + '] ' + log.message + '\n' + currentText;
-            var lines = logContainer.innerText.split('\n');
+            const lines = logContainer.innerText.split('\n');
             if (lines.length > 100) logContainer.innerText = lines.slice(0, 100).join('\n');
         };
         ws.onclose = function() { setTimeout(connectWebSocket, 3000); };
     }
 
-    // ---------- 仪表盘更新 ----------
     function updateDashboard() {
         httpGet('/api/status', function(err, status) {
-            if (err) return console.error('获取状态失败', err);
+            if (err) return;
             document.getElementById('online-status').innerText = status.online ? '在线' : '离线';
-            document.getElementById('uptime').innerText = '运行时间: ' + status.uptime;
+            document.getElementById('uptime').innerText = status.uptime;
             document.getElementById('username').innerText = status.username;
             document.getElementById('current-room').innerText = status.currentRoom;
-            var colorPreview = document.getElementById('color-preview');
-            colorPreview.style.backgroundColor = '#' + status.color;
+            document.getElementById('color-preview').style.backgroundColor = '#' + status.color;
             document.getElementById('color-value').innerText = '#' + status.color;
             document.getElementById('signature').innerText = status.signature || '无';
-            var ownerText = status.ownerName ? status.ownerName + ' (' + status.ownerUid + ')' : '未配置';
+            const ownerText = status.ownerName ? status.ownerName + ' (' + status.ownerUid + ')' : '未配置';
             document.getElementById('owner').innerText = ownerText;
-            var admins = status.adminList.map(function(admin) { return admin.name || admin.uid; }).join(', ') || '无';
+            const admins = status.adminList.map(a => a.name || a.uid).join(', ') || '无';
             document.getElementById('admins').innerText = admins;
         });
         httpGet('/api/plugins', function(err, plugins) {
-            if (err) return console.error('获取插件列表失败', err);
-            var tbody = document.querySelector('#plugins-table tbody');
+            if (err) return;
+            const tbody = document.querySelector('#plugins-table tbody');
             tbody.innerHTML = '';
-            for (var i = 0; i < plugins.length; i++) {
-                var p = plugins[i];
-                var row = tbody.insertRow();
+            plugins.forEach(p => {
+                const row = tbody.insertRow();
                 row.insertCell(0).innerText = p.name;
                 row.insertCell(1).innerText = p.commandCount;
-            }
+            });
         });
         httpGet('/api/logs?limit=30', function(err, logs) {
-            if (err) return console.error('获取日志失败', err);
-            var logText = '';
-            for (var i = 0; i < logs.length; i++) logText += '[' + logs[i].time + '] ' + logs[i].message + '\n';
+            if (err) return;
+            const logText = logs.map(l => '[' + l.time + '] ' + l.message).join('\n');
             document.getElementById('logs').innerText = logText || '暂无日志';
         });
     }
 
-    // ---------- 插件详情表格 ----------
     function loadPluginsDetail() {
         httpGet('/api/plugins/detail', function(err, plugins) {
-            if (err) return console.error('获取插件详情失败', err);
-            var tbody = document.querySelector('#plugins-detail-table tbody');
+            if (err) return;
+            const tbody = document.querySelector('#plugins-detail-table tbody');
             tbody.innerHTML = '';
-            for (var i = 0; i < plugins.length; i++) {
-                var p = plugins[i];
-                var row = tbody.insertRow();
+            plugins.forEach(p => {
+                const row = tbody.insertRow();
                 row.insertCell(0).innerText = p.name;
                 row.insertCell(1).innerText = p.description || '无';
                 row.insertCell(2).innerText = p.commandCount;
-                row.insertCell(3).innerText = p.dependencies.join(', ') || '无';
-                var statusCell = row.insertCell(4);
-                var toggle = document.createElement('button');
-                toggle.innerText = p.enabled ? '禁用' : '启用';
-                toggle.style.cursor = 'pointer';
-                toggle.style.padding = '2px 5px';
-                toggle.style.backgroundColor = p.enabled ? '#dc3545' : '#28a745';
-                toggle.style.color = 'white';
-                toggle.onclick = (function(pluginName, currentEnabled) {
-                    return function() {
-                        httpPost('/api/plugin/toggle', { pluginName: pluginName, enabled: !currentEnabled }, function(err) {
-                            if (err) alert('操作失败: ' + err.message);
-                            else { alert('插件 ' + pluginName + ' 已' + (!currentEnabled ? '启用' : '禁用')); loadPluginsDetail(); }
-                        });
-                    };
-                })(p.name, p.enabled);
-                statusCell.appendChild(toggle);
-                var actionCell = row.insertCell(5);
-                var reloadBtn = document.createElement('button');
+                row.insertCell(3).innerText = (p.dependencies || []).join(', ') || '无';
+                const statusCell = row.insertCell(4);
+                const toggleBtn = document.createElement('button');
+                toggleBtn.innerText = p.enabled ? '禁用' : '启用';
+                toggleBtn.style.backgroundColor = p.enabled ? '#dc3545' : '#28a745';
+                toggleBtn.onclick = () => {
+                    httpPost('/api/plugin/toggle', { pluginName: p.name, enabled: !p.enabled }, err => {
+                        if (err) alert('操作失败: ' + err.message);
+                        else { loadPluginsDetail(); loadMarketPlugins(); }
+                    });
+                };
+                statusCell.appendChild(toggleBtn);
+                const actionCell = row.insertCell(5);
+                const reloadBtn = document.createElement('button');
                 reloadBtn.innerText = '重载';
                 reloadBtn.style.marginRight = '5px';
-                reloadBtn.onclick = (function(pluginName) {
-                    return function() {
-                        if (confirm('确定要热重载插件 ' + pluginName + ' 吗？')) {
-                            httpPost('/api/plugin/reload/' + pluginName, {}, function(err) {
-                                if (err) alert('重载失败: ' + err.message);
-                                else { alert('插件 ' + pluginName + ' 已重载'); loadPluginsDetail(); }
-                            });
-                        }
-                    };
-                })(p.name);
+                reloadBtn.onclick = () => {
+                    if (confirm('确定要热重载插件 ' + p.name + ' 吗？')) {
+                        httpPost('/api/plugin/reload/' + p.name, {}, err => {
+                            if (err) alert('重载失败: ' + err.message);
+                            else alert('重载成功');
+                        });
+                    }
+                };
                 actionCell.appendChild(reloadBtn);
-                var restartBtn = document.createElement('button');
+                const restartBtn = document.createElement('button');
                 restartBtn.innerText = '重启';
-                restartBtn.onclick = function() { document.getElementById('restart-btn').click(); };
+                restartBtn.onclick = () => document.getElementById('restart-btn').click();
                 actionCell.appendChild(restartBtn);
-            }
+            });
         });
     }
 
-    // ---------- 依赖图（优化版）----------
+    // ---------- 插件市场 ----------
+    function loadMarketPlugins() {
+        httpGet('/api/market/list', function(err, data) {
+            if (err) { alert('获取市场列表失败: ' + err.message); return; }
+            const tbody = document.querySelector('#market-table tbody');
+            tbody.innerHTML = '';
+            if (data.updated) {
+                document.getElementById('market-last-update').innerText = '更新于: ' + new Date(data.updated).toLocaleString();
+            }
+            data.plugins.forEach(p => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerHTML = `<strong>${p.displayName || p.name}</strong><br><small>${p.name}</small>`;
+                row.insertCell(1).innerText = p.version;
+                row.insertCell(2).innerText = p.description || '';
+                row.insertCell(3).innerText = p.author || '';
+                row.insertCell(4).innerText = (p.npmDependencies || []).join(', ') || '无';
+                
+                const statusCell = row.insertCell(5);
+                if (p.installed) {
+                    let statusHtml = `<span class="market-tag tag-installed">已安装 ${p.installedVersion || ''}</span>`;
+                    if (p.hasUpdate) statusHtml += `<span class="market-tag tag-update" style="margin-left:5px;">有新版本 ${p.version}</span>`;
+                    statusCell.innerHTML = statusHtml;
+                } else {
+                    statusCell.innerHTML = '<span class="market-tag tag-notinstalled">未安装</span>';
+                }
+                
+                const actionCell = row.insertCell(6);
+                if (p.installed && !p.hasUpdate) {
+                    const uninstallBtn = document.createElement('button');
+                    uninstallBtn.innerText = '卸载';
+                    uninstallBtn.style.backgroundColor = '#dc3545';
+                    uninstallBtn.onclick = () => uninstallMarketPlugin(p.name);
+                    actionCell.appendChild(uninstallBtn);
+                } else {
+                    const installBtn = document.createElement('button');
+                    installBtn.innerText = p.installed ? '更新' : '安装';
+                    installBtn.className = p.installed ? '' : 'success';
+                    installBtn.onclick = () => installMarketPlugin(p.name, p.downloadUrl, p.version);
+                    actionCell.appendChild(installBtn);
+                    if (p.installed) {
+                        const uninstallBtn = document.createElement('button');
+                        uninstallBtn.innerText = '卸载';
+                        uninstallBtn.style.backgroundColor = '#dc3545';
+                        uninstallBtn.style.marginLeft = '5px';
+                        uninstallBtn.onclick = () => uninstallMarketPlugin(p.name);
+                        actionCell.appendChild(uninstallBtn);
+                    }
+                }
+            });
+        });
+    }
+
+    function installMarketPlugin(name, url, version) {
+        if (!confirm(`确定要安装/更新插件 ${name} 吗？`)) return;
+        httpPost('/api/market/install', { pluginName: name, downloadUrl: url, version }, function(err, result) {
+            if (err) alert('操作失败: ' + err.message);
+            else { alert(result.message); loadMarketPlugins(); loadPluginsDetail(); }
+        });
+    }
+
+    function uninstallMarketPlugin(name) {
+        if (!confirm(`确定要卸载插件 ${name} 吗？\n插件文件将被删除，且无法恢复。`)) return;
+        httpPost('/api/market/uninstall', { pluginName: name }, function(err, result) {
+            if (err) alert('操作失败: ' + err.message);
+            else { alert(result.message); loadMarketPlugins(); loadPluginsDetail(); }
+        });
+    }
+
+    // ---------- 依赖图 ----------
     function loadDependencyGraph() {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.innerText = '加载依赖图中...';
-        loadingDiv.style.position = 'fixed';
-        loadingDiv.style.top = '50%';
-        loadingDiv.style.left = '50%';
-        loadingDiv.style.transform = 'translate(-50%, -50%)';
-        loadingDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
-        loadingDiv.style.color = 'white';
-        loadingDiv.style.padding = '10px 20px';
-        loadingDiv.style.borderRadius = '5px';
-        loadingDiv.style.zIndex = 1001;
-        document.body.appendChild(loadingDiv);
-
         httpGet('/api/plugins/deps-graph', function(err, data) {
-            if (err) {
-                console.error('获取依赖图失败', err);
-                loadingDiv.remove();
-                alert('获取依赖图失败: ' + err.message);
-                return;
-            }
-            loadingDiv.remove();
-
-            const nodes = data.nodes;
-            const edges = data.edges;
-            if (!nodes || nodes.length === 0) {
-                alert('无插件数据');
-                return;
-            }
-
+            if (err) { alert('获取依赖图失败'); return; }
+            const nodes = data.nodes, edges = data.edges;
+            if (!nodes.length) { alert('无插件数据'); return; }
+            
             const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-            modal.style.zIndex = 1000;
-            modal.style.display = 'flex';
-            modal.style.flexDirection = 'column';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center';
             const canvas = document.createElement('canvas');
-            canvas.width = 900;
-            canvas.height = 700;
-            canvas.style.backgroundColor = '#1e1e2f';
-            canvas.style.border = '1px solid #444';
-            canvas.style.borderRadius = '8px';
-            canvas.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-            canvas.style.cursor = 'grab';
-
-            const toolbar = document.createElement('div');
-            toolbar.style.marginBottom = '10px';
-            toolbar.style.display = 'flex';
-            toolbar.style.gap = '10px';
-
-            const resetBtn = document.createElement('button');
-            resetBtn.innerText = '重置视图';
-            resetBtn.style.padding = '5px 12px';
-            resetBtn.style.cursor = 'pointer';
-
-            const zoomInBtn = document.createElement('button');
-            zoomInBtn.innerText = '放大';
-            zoomInBtn.style.padding = '5px 12px';
-            zoomInBtn.style.cursor = 'pointer';
-
-            const zoomOutBtn = document.createElement('button');
-            zoomOutBtn.innerText = '缩小';
-            zoomOutBtn.style.padding = '5px 12px';
-            zoomOutBtn.style.cursor = 'pointer';
-
-            const zoomLevelSpan = document.createElement('span');
-            zoomLevelSpan.style.color = 'white';
-            zoomLevelSpan.style.marginLeft = '10px';
-            zoomLevelSpan.innerText = '缩放: 100%';
-
-            toolbar.appendChild(resetBtn);
-            toolbar.appendChild(zoomInBtn);
-            toolbar.appendChild(zoomOutBtn);
-            toolbar.appendChild(zoomLevelSpan);
-
+            canvas.width = 900; canvas.height = 700;
+            canvas.style.cssText = 'background:#1e1e2f;border-radius:8px;';
+            modal.appendChild(canvas);
             const closeBtn = document.createElement('button');
             closeBtn.innerText = '关闭';
-            closeBtn.style.position = 'absolute';
-            closeBtn.style.top = '20px';
-            closeBtn.style.right = '20px';
-            closeBtn.style.padding = '6px 12px';
-            closeBtn.style.cursor = 'pointer';
-            closeBtn.style.backgroundColor = '#dc3545';
-            closeBtn.style.color = 'white';
-            closeBtn.style.border = 'none';
-            closeBtn.style.borderRadius = '4px';
-
-            modal.appendChild(toolbar);
-            modal.appendChild(canvas);
+            closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;padding:6px 12px;';
+            closeBtn.onclick = () => modal.remove();
             modal.appendChild(closeBtn);
             document.body.appendChild(modal);
-
-            let transform = { scale: 1, offsetX: canvas.width / 2, offsetY: canvas.height / 2 };
-            let positions = {};
-            let velocity = {};
-
-            const radius = Math.min(canvas.width, canvas.height) * 0.35;
-            const angleStep = (2 * Math.PI) / nodes.length;
-            nodes.forEach((node, idx) => {
-                const angle = idx * angleStep;
-                positions[node.id] = { x: canvas.width/2 + radius * Math.cos(angle), y: canvas.height/2 + radius * Math.sin(angle) };
-                velocity[node.id] = { x: 0, y: 0 };
+            
+            const ctx = canvas.getContext('2d');
+            const nodeRadius = 22;
+            const positions = {};
+            nodes.forEach((n, i) => {
+                const angle = (i / nodes.length) * 2 * Math.PI;
+                positions[n.id] = { x: 450 + 300 * Math.cos(angle), y: 350 + 250 * Math.sin(angle) };
             });
-
-            const springLength = 180, springStrength = 0.03, repulsionStrength = nodes.length > 30 ? 2500 : 4000;
-            const damping = 0.92, centerStrength = 0.008;
-            let physicsIterations = nodes.length > 40 ? 10 : 20;
-
-            let dragging = false, dragNode = null, panning = false, panStart = { x: 0, y: 0 };
-            let animationId = null;
-            let hoveredNode = null;
-
-            function screenToWorld(screenX, screenY) {
-                return { x: (screenX - transform.offsetX) / transform.scale, y: (screenY - transform.offsetY) / transform.scale };
-            }
-            function worldToScreen(worldX, worldY) {
-                return { x: worldX * transform.scale + transform.offsetX, y: worldY * transform.scale + transform.offsetY };
-            }
-            function updatePhysics() {
-                for (const node of nodes) {
-                    let fx = 0, fy = 0;
-                    const pos = positions[node.id];
-                    for (const other of nodes) {
-                        if (other.id === node.id) continue;
-                        const otherPos = positions[other.id];
-                        const dx = pos.x - otherPos.x, dy = pos.y - otherPos.y;
-                        const dist = Math.hypot(dx, dy) + 1;
-                        const force = repulsionStrength / (dist * dist);
-                        fx += (dx / dist) * force;
-                        fy += (dy / dist) * force;
-                    }
-                    for (const edge of edges) {
-                        if (edge.from === node.id) {
-                            const target = positions[edge.to];
-                            const dx = pos.x - target.x, dy = pos.y - target.y;
-                            const dist = Math.hypot(dx, dy);
-                            const force = (dist - springLength) * springStrength;
-                            fx -= (dx / (dist + 0.001)) * force;
-                            fy -= (dy / (dist + 0.001)) * force;
-                        } else if (edge.to === node.id) {
-                            const source = positions[edge.from];
-                            const dx = pos.x - source.x, dy = pos.y - source.y;
-                            const dist = Math.hypot(dx, dy);
-                            const force = (dist - springLength) * springStrength;
-                            fx -= (dx / (dist + 0.001)) * force;
-                            fy -= (dy / (dist + 0.001)) * force;
-                        }
-                    }
-                    fx -= pos.x * centerStrength;
-                    fy -= pos.y * centerStrength;
-                    velocity[node.id].x = (velocity[node.id].x + fx) * damping;
-                    velocity[node.id].y = (velocity[node.id].y + fy) * damping;
-                }
-                for (const node of nodes) {
-                    positions[node.id].x += velocity[node.id].x;
-                    positions[node.id].y += velocity[node.id].y;
-                    const margin = 50;
-                    positions[node.id].x = Math.min(Math.max(positions[node.id].x, margin), canvas.width - margin);
-                    positions[node.id].y = Math.min(Math.max(positions[node.id].y, margin), canvas.height - margin);
-                }
-            }
-            function getCircleIntersection(x1, y1, x2, y2, cx, cy, r) {
-                const dx = x2 - x1, dy = y2 - y1;
-                const fx = x1 - cx, fy = y1 - cy;
-                const a = dx * dx + dy * dy;
-                if (a === 0) return { x: x1, y: y1 };
-                const b = 2 * (fx * dx + fy * dy);
-                const c = (fx * fx + fy * fy) - r * r;
-                let d = b * b - 4 * a * c;
-                if (d < 0) return { x: x2, y: y2 };
-                d = Math.sqrt(d);
-                const t1 = (-b - d) / (2 * a);
-                const t2 = (-b + d) / (2 * a);
-                let t = Math.min(t1, t2);
-                if (t < 0 || t > 1) t = Math.max(t1, t2);
-                if (t < 0 || t > 1) return { x: x2, y: y2 };
-                return { x: x1 + t * dx, y: y1 + t * dy };
-            }
-            function drawArrow(ctx, from, to, nodeRadius) {
-                const start = getCircleIntersection(from.x, from.y, to.x, to.y, from.x, from.y, nodeRadius);
-                const end = getCircleIntersection(to.x, to.y, from.x, from.y, to.x, to.y, nodeRadius);
-                ctx.beginPath();
-                ctx.moveTo(start.x, start.y);
-                ctx.lineTo(end.x, end.y);
-                ctx.stroke();
-                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const arrowSize = 10;
-                const arrowX = end.x, arrowY = end.y;
-                const angle1 = angle + Math.PI / 6, angle2 = angle - Math.PI / 6;
-                const wingX1 = arrowX - arrowSize * Math.cos(angle1);
-                const wingY1 = arrowY - arrowSize * Math.sin(angle1);
-                const wingX2 = arrowX - arrowSize * Math.cos(angle2);
-                const wingY2 = arrowY - arrowSize * Math.sin(angle2);
-                ctx.beginPath();
-                ctx.moveTo(arrowX, arrowY);
-                ctx.lineTo(wingX1, wingY1);
-                ctx.lineTo(wingX2, wingY2);
-                ctx.fillStyle = '#aaa';
-                ctx.fill();
-            }
+            
             function draw() {
-                const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.save();
-                ctx.translate(transform.offsetX, transform.offsetY);
-                ctx.scale(transform.scale, transform.scale);
-                ctx.strokeStyle = '#888';
-                ctx.lineWidth = 1.5 / transform.scale;
-                for (const edge of edges) {
-                    const fromPos = positions[edge.from], toPos = positions[edge.to];
-                    if (fromPos && toPos) drawArrow(ctx, fromPos, toPos, 22);
-                }
-                for (const node of nodes) {
-                    const pos = positions[node.id];
-                    const isHovered = hoveredNode === node.id;
-                    const nodeRadius = isHovered ? 26 : 22;
-                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                    ctx.shadowBlur = 6;
+                // 边
+                ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+                edges.forEach(e => {
+                    const from = positions[e.from], to = positions[e.to];
+                    if (from && to) {
+                        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+                    }
+                });
+                // 节点
+                nodes.forEach(n => {
+                    const pos = positions[n.id];
                     ctx.beginPath();
-                    ctx.fillStyle = node.enabled ? '#5cb85c' : '#d9534f';
+                    ctx.fillStyle = n.enabled ? '#5cb85c' : '#d9534f';
                     ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
                     ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.beginPath();
-                    ctx.strokeStyle = isHovered ? '#ffd966' : '#333';
-                    ctx.lineWidth = 2 / transform.scale;
-                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
                     ctx.stroke();
-                    ctx.fillStyle = '#fff';
-                    ctx.font = `${12 / transform.scale}px "Segoe UI", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    let displayName = node.label;
-                    if (displayName.length > 12) displayName = displayName.slice(0, 10) + '…';
-                    ctx.fillText(displayName, pos.x, pos.y);
-                }
-                ctx.restore();
-                zoomLevelSpan.innerText = '缩放: ' + Math.round(transform.scale * 100) + '%';
+                    ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(n.label.length > 12 ? n.label.slice(0,10)+'…' : n.label, pos.x, pos.y);
+                });
             }
-            function animate() {
-                for (let i = 0; i < physicsIterations; i++) updatePhysics();
-                draw();
-                animationId = requestAnimationFrame(animate);
-            }
-            function findNodeUnderMouse(screenX, screenY) {
-                const world = screenToWorld(screenX, screenY);
-                for (const node of nodes) {
-                    const pos = positions[node.id];
-                    const dx = world.x - pos.x, dy = world.y - pos.y;
-                    if (Math.hypot(dx, dy) <= 22) return node;
-                }
-                return null;
-            }
-            function onMouseDown(e) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
-                const mouseX = (e.clientX - rect.left) * scaleX, mouseY = (e.clientY - rect.top) * scaleY;
-                if (e.button === 2) {
-                    e.preventDefault();
-                    panning = true;
-                    panStart = { x: e.clientX, y: e.clientY };
-                    canvas.style.cursor = 'grabbing';
-                    return;
-                }
-                const node = findNodeUnderMouse(mouseX, mouseY);
-                if (node) {
-                    dragging = true;
-                    dragNode = node;
-                    canvas.style.cursor = 'grabbing';
-                    e.preventDefault();
-                }
-            }
-            function onMouseMove(e) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
-                const mouseX = (e.clientX - rect.left) * scaleX, mouseY = (e.clientY - rect.top) * scaleY;
-                if (panning) {
-                    const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
-                    transform.offsetX += dx;
-                    transform.offsetY += dy;
-                    panStart = { x: e.clientX, y: e.clientY };
-                    draw();
-                    return;
-                }
-                if (dragging && dragNode) {
-                    const worldPos = screenToWorld(mouseX, mouseY);
-                    positions[dragNode.id] = worldPos;
-                    velocity[dragNode.id] = { x: 0, y: 0 };
-                    draw();
-                    return;
-                }
-                const node = findNodeUnderMouse(mouseX, mouseY);
-                if (node) {
-                    if (hoveredNode !== node.id) {
-                        hoveredNode = node.id;
-                        canvas.style.cursor = 'pointer';
-                        draw();
-                        canvas.title = node.label + (node.enabled ? ' (已启用)' : ' (已禁用)');
-                    }
-                } else {
-                    if (hoveredNode !== null) {
-                        hoveredNode = null;
-                        canvas.style.cursor = 'grab';
-                        canvas.title = '';
-                        draw();
-                    }
-                }
-            }
-            function onMouseUp(e) {
-                if (dragging) { dragging = false; dragNode = null; canvas.style.cursor = 'grab'; }
-                if (panning) { panning = false; canvas.style.cursor = 'grab'; }
-            }
-            function onWheel(e) {
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                const worldBefore = screenToWorld(mouseX, mouseY);
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                let newScale = transform.scale * delta;
-                newScale = Math.min(Math.max(newScale, 0.3), 3);
-                transform.scale = newScale;
-                const worldAfter = screenToWorld(mouseX, mouseY);
-                transform.offsetX += (worldAfter.x - worldBefore.x) * transform.scale;
-                transform.offsetY += (worldAfter.y - worldBefore.y) * transform.scale;
-                draw();
-            }
-            function resetView() { transform.scale = 1; transform.offsetX = canvas.width / 2; transform.offsetY = canvas.height / 2; draw(); }
-            function zoomIn() { transform.scale = Math.min(transform.scale * 1.2, 3); draw(); }
-            function zoomOut() { transform.scale = Math.max(transform.scale / 1.2, 0.3); draw(); }
-            function cleanup() {
-                if (animationId) cancelAnimationFrame(animationId);
-                canvas.removeEventListener('mousedown', onMouseDown);
-                canvas.removeEventListener('mousemove', onMouseMove);
-                canvas.removeEventListener('mouseup', onMouseUp);
-                canvas.removeEventListener('wheel', onWheel);
-                window.removeEventListener('mouseup', onMouseUp);
-                canvas.removeEventListener('contextmenu', preventContextMenu);
-            }
-            function preventContextMenu(e) { e.preventDefault(); }
-            canvas.addEventListener('mousedown', onMouseDown);
-            canvas.addEventListener('mousemove', onMouseMove);
-            canvas.addEventListener('mouseup', onMouseUp);
-            window.addEventListener('mouseup', onMouseUp);
-            canvas.addEventListener('wheel', onWheel, { passive: false });
-            canvas.addEventListener('contextmenu', preventContextMenu);
-            resetBtn.onclick = resetView;
-            zoomInBtn.onclick = zoomIn;
-            zoomOutBtn.onclick = zoomOut;
-            closeBtn.onclick = () => { cleanup(); modal.remove(); };
-            animate();
+            draw();
         });
     }
 
-    // ---------- 主配置表单 ----------
+    // ---------- 主配置 ----------
     function buildMainConfigForm(config) {
-        var fields = [
+        const fields = [
             { name: 'username', label: '用户名', type: 'text' },
             { name: 'password', label: '密码', type: 'password' },
             { name: 'defaultRoomId', label: '默认房间ID', type: 'text' },
             { name: 'roomPassword', label: '房间密码', type: 'text' },
             { name: 'color', label: '消息颜色', type: 'text' },
             { name: 'signature', label: '签名', type: 'text' },
-            { name: 'logLevel', label: '日志级别', type: 'select', options: ['error', 'warn', 'info', 'debug'] },
+            { name: 'logLevel', label: '日志级别', type: 'select', options: ['error','warn','info','debug'] },
             { name: 'ownerUid', label: '主人UID', type: 'text' },
             { name: 'ownerName', label: '主人名称', type: 'text' },
             { name: 'adminList', label: '管理员列表', type: 'textarea' }
         ];
-        var form = document.getElementById('main-config-form');
+        const form = document.getElementById('main-config-form');
         form.innerHTML = '';
-        for (var i = 0; i < fields.length; i++) {
-            var f = fields[i];
-            var div = document.createElement('div');
+        fields.forEach(f => {
+            const div = document.createElement('div');
             div.className = 'config-row';
-            var label = document.createElement('label');
-            label.innerText = f.label;
-            div.appendChild(label);
-            var input;
+            div.innerHTML = `<label>${f.label}</label>`;
+            let input;
             if (f.type === 'select') {
                 input = document.createElement('select');
-                for (var j = 0; j < f.options.length; j++) {
-                    var opt = document.createElement('option');
-                    opt.value = f.options[j];
-                    opt.innerText = f.options[j];
-                    input.appendChild(opt);
-                }
+                f.options.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.innerText = o; input.appendChild(opt); });
             } else if (f.type === 'textarea') {
-                input = document.createElement('textarea');
-                input.rows = 3;
+                input = document.createElement('textarea'); input.rows = 3;
             } else {
-                input = document.createElement('input');
-                input.type = f.type;
+                input = document.createElement('input'); input.type = f.type;
             }
             input.name = f.name;
-            if (f.name === 'adminList') {
-                input.value = JSON.stringify(config[f.name] || [], null, 2);
-            } else {
-                input.value = config[f.name] !== undefined ? config[f.name] : '';
-            }
+            if (f.name === 'adminList') input.value = JSON.stringify(config[f.name] || [], null, 2);
+            else input.value = config[f.name] !== undefined ? config[f.name] : '';
             div.appendChild(input);
             form.appendChild(div);
-        }
+        });
     }
+
     function loadMainConfig() {
         httpGet('/api/config/main', function(err, config) {
-            if (err) return console.error('获取主配置失败', err);
+            if (err) return;
             buildMainConfigForm(config);
             document.getElementById('main-config-json').value = JSON.stringify(config, null, 2);
             document.getElementById('main-config-json').style.display = mainConfigMode === 'json' ? 'block' : 'none';
             document.getElementById('main-config-form').style.display = mainConfigMode === 'form' ? 'block' : 'none';
-            var btns = document.querySelectorAll('#config-view .mode-switch button');
-            for (var i = 0; i < btns.length; i++) {
-                if (btns[i].getAttribute('data-mode') === mainConfigMode) btns[i].classList.add('active');
-                else btns[i].classList.remove('active');
-            }
         });
     }
+
     function saveMainConfig() {
-        var config;
+        let config;
         if (mainConfigMode === 'form') {
-            var form = document.getElementById('main-config-form');
-            var formData = {};
-            var inputs = form.querySelectorAll('input, select, textarea');
-            for (var i = 0; i < inputs.length; i++) {
-                var input = inputs[i];
-                var name = input.name;
-                var value = input.value;
-                if (name === 'adminList') { try { value = JSON.parse(value); } catch (e) { alert('管理员列表 JSON 格式错误'); return; } }
-                formData[name] = value;
-            }
+            const form = document.getElementById('main-config-form');
+            const formData = {};
+            form.querySelectorAll('input, select, textarea').forEach(input => {
+                let value = input.value;
+                if (input.name === 'adminList') { try { value = JSON.parse(value); } catch { alert('管理员列表 JSON 格式错误'); return; } }
+                formData[input.name] = value;
+            });
             config = formData;
         } else {
-            try { config = JSON.parse(document.getElementById('main-config-json').value); } catch (e) { alert('JSON 格式错误'); return; }
+            try { config = JSON.parse(document.getElementById('main-config-json').value); }
+            catch { alert('JSON 格式错误'); return; }
         }
-        httpPost('/api/config/main', config, function(err) { if (err) alert('保存失败: ' + err.message); else alert('主配置保存成功，请重启机器人生效'); });
+        httpPost('/api/config/main', config, err => {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('保存成功，请重启机器人');
+        });
     }
 
     // ---------- 插件配置 ----------
-    function buildPluginConfigForm(config, schema) {
-        var form = document.getElementById('plugin-config-form');
-        form.innerHTML = '';
-        if (!schema || Object.keys(schema).length === 0) { form.innerHTML = '<p>该插件无配置说明，请使用 JSON 模式编辑。</p>'; return; }
-        for (var field in schema) {
-            var info = schema[field];
-            var div = document.createElement('div');
-            div.className = 'config-row';
-            var label = document.createElement('label');
-            label.innerText = field;
-            div.appendChild(label);
-            var input;
-            if (info.type === 'boolean') { input = document.createElement('input'); input.type = 'checkbox'; input.checked = config[field] || false; }
-            else if (info.type === 'number') { input = document.createElement('input'); input.type = 'number'; input.value = config[field] !== undefined ? config[field] : ''; }
-            else { input = document.createElement('input'); input.type = 'text'; input.value = config[field] !== undefined ? config[field] : ''; }
-            input.name = field;
-            div.appendChild(input);
-            form.appendChild(div);
-        }
-    }
     function loadPluginSelect() {
         httpGet('/api/plugins/detail', function(err, plugins) {
-            if (err) return console.error('获取插件列表失败', err);
-            var select = document.getElementById('plugin-select');
+            if (err) return;
+            const select = document.getElementById('plugin-select');
             select.innerHTML = '<option value="">-- 选择插件 --</option>';
-            for (var i = 0; i < plugins.length; i++) {
-                var p = plugins[i];
-                var option = document.createElement('option');
-                option.value = p.name;
-                option.innerText = p.name;
-                select.appendChild(option);
-            }
+            plugins.forEach(p => { const opt = document.createElement('option'); opt.value = p.name; opt.innerText = p.name; select.appendChild(opt); });
             select.onchange = function() {
-                var pluginName = select.value;
-                var form = document.getElementById('plugin-config-form');
-                var jsonArea = document.getElementById('plugin-config-json');
-                var schemaDiv = document.getElementById('plugin-schema-table');
+                const pluginName = select.value;
+                const form = document.getElementById('plugin-config-form');
+                const jsonArea = document.getElementById('plugin-config-json');
+                const schemaDiv = document.getElementById('plugin-schema-table');
                 if (!pluginName) { form.style.display = 'none'; jsonArea.style.display = 'none'; schemaDiv.innerHTML = ''; return; }
                 httpGet('/api/config/plugin/' + pluginName, function(err, config) {
-                    if (err) return console.error('获取插件配置失败', err);
+                    if (err) return;
                     httpGet('/api/plugin/schema/' + pluginName, function(err, schema) {
-                        if (err) return console.error('获取插件 schema 失败', err);
-                        if (!schema || Object.keys(schema).length === 0) schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
+                        if (err) return;
+                        if (!schema || !Object.keys(schema).length) schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
                         else {
-                            var html = '<table style="width:100%; border-collapse:collapse; margin-bottom:1rem;">';
-                            html += '<thead><tr><th>字段名</th><th>类型</th><th>说明</th></tr></thead><tbody>';
-                            for (var f in schema) html += '<tr><td><code>' + f + '</code></td><td>' + (schema[f].type || 'string') + '</td><td>' + (schema[f].description || '') + '</td></tr>';
+                            let html = '<table><thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead><tbody>';
+                            for (let f in schema) html += `<tr><td>${f}</td><td>${schema[f].type||'string'}</td><td>${schema[f].description||''}</td></tr>`;
                             html += '</tbody></table>';
                             schemaDiv.innerHTML = html;
                         }
-                        buildPluginConfigForm(config, schema);
+                        // 表单生成
+                        const formDiv = document.getElementById('plugin-config-form');
+                        formDiv.innerHTML = '';
+                        if (schema) {
+                            for (let f in schema) {
+                                const info = schema[f];
+                                const div = document.createElement('div'); div.className = 'config-row';
+                                div.innerHTML = `<label>${f}</label>`;
+                                let input;
+                                if (info.type === 'boolean') {
+                                    input = document.createElement('input'); input.type = 'checkbox';
+                                    input.checked = config[f] || false;
+                                } else {
+                                    input = document.createElement('input'); input.type = 'text';
+                                    input.value = config[f] !== undefined ? config[f] : '';
+                                }
+                                input.name = f;
+                                div.appendChild(input);
+                                formDiv.appendChild(div);
+                            }
+                        }
                         jsonArea.value = JSON.stringify(config, null, 2);
-                        if (pluginConfigMode === 'form') { form.style.display = 'block'; jsonArea.style.display = 'none'; }
-                        else { form.style.display = 'none'; jsonArea.style.display = 'block'; }
-                        form.setAttribute('data-plugin-name', pluginName);
-                        jsonArea.setAttribute('data-plugin-name', pluginName);
+                        if (pluginConfigMode === 'form') { formDiv.style.display = 'block'; jsonArea.style.display = 'none'; }
+                        else { formDiv.style.display = 'none'; jsonArea.style.display = 'block'; }
                     });
                 });
             };
         });
     }
+
     function savePluginConfig() {
-        var pluginName = document.getElementById('plugin-select').value;
-        if (!pluginName) { alert('请先选择一个插件'); return; }
-        var config;
+        const pluginName = document.getElementById('plugin-select').value;
+        if (!pluginName) { alert('请选择插件'); return; }
+        let config;
         if (pluginConfigMode === 'form') {
-            var form = document.getElementById('plugin-config-form');
-            var formData = {};
-            var inputs = form.querySelectorAll('input, select, textarea');
-            for (var i = 0; i < inputs.length; i++) {
-                var input = inputs[i];
-                var name = input.name;
-                var value;
-                if (input.type === 'checkbox') value = input.checked;
-                else if (input.type === 'number') value = parseFloat(input.value);
-                else value = input.value;
-                formData[name] = value;
-            }
-            config = formData;
+            const form = document.getElementById('plugin-config-form');
+            config = {};
+            form.querySelectorAll('input').forEach(i => { config[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
         } else {
-            try { config = JSON.parse(document.getElementById('plugin-config-json').value); } catch (e) { alert('JSON 格式错误'); return; }
+            try { config = JSON.parse(document.getElementById('plugin-config-json').value); }
+            catch { alert('JSON 格式错误'); return; }
         }
-        httpPost('/api/config/plugin/' + pluginName, config, function(err) { if (err) alert('保存失败: ' + err.message); else alert('插件配置保存成功，请重启机器人生效'); });
+        httpPost('/api/config/plugin/' + pluginName, config, err => {
+            if (err) alert('保存失败: ' + err.message);
+            else alert('保存成功');
+        });
     }
 
     function restartBot() {
-        if (confirm('确定要重启机器人吗？')) {
-            httpPost('/api/system/restart', {}, function(err) {
-                if (err) alert('重启请求失败: ' + err.message);
-                else { alert('机器人正在重启，请稍后...'); setTimeout(function() { window.location.reload(); }, 2000); }
+        if (confirm('确定重启机器人吗？')) {
+            httpPost('/api/system/restart', {}, err => {
+                if (err) alert('重启失败: ' + err.message);
+                else { alert('正在重启...'); setTimeout(() => location.reload(), 2000); }
             });
         }
     }
 
-    // ---------- 图表 ----------
     function loadChart() {
         httpGet('/api/stats/online', function(err, data) {
-            if (err) return console.error('获取统计数据失败', err);
-            var times = data.map(function(d) { return new Date(d.time).toLocaleTimeString(); });
-            var counts = data.map(function(d) { return d.count; });
-            var chart = echarts.init(document.getElementById('online-chart'));
+            if (err) return;
+            const currentRoom = document.getElementById('current-room').innerText;
+            const filtered = data.filter(d => d.roomId === currentRoom);
+            const times = filtered.map(d => new Date(d.time).toLocaleTimeString());
+            const counts = filtered.map(d => d.count);
+            const chart = echarts.init(document.getElementById('online-chart'));
             chart.setOption({
+                title: { text: `房间 ${currentRoom} 在线人数` },
                 tooltip: { trigger: 'axis' },
                 xAxis: { type: 'category', data: times },
-                yAxis: { type: 'value', name: '在线人数' },
+                yAxis: { type: 'value', name: '人数' },
                 series: [{ type: 'line', data: counts, smooth: true, areaStyle: {} }]
             });
         });
     }
 
-    // ---------- 页面切换 ----------
     function showPage(pageName) {
-        var pages = document.querySelectorAll('.page');
-        for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageName + '-view').classList.add('active');
-        var navBtns = document.querySelectorAll('nav button');
-        for (var i = 0; i < navBtns.length; i++) navBtns[i].classList.remove('active');
-        var activeBtn = document.querySelector('nav button[data-page="' + pageName + '"]');
-        if (activeBtn) activeBtn.classList.add('active');
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.querySelector(`nav button[data-page="${pageName}"]`).classList.add('active');
         currentPage = pageName;
         if (pageName === 'plugins') loadPluginsDetail();
+        if (pageName === 'market') loadMarketPlugins();
         if (pageName === 'config') { loadMainConfig(); loadPluginSelect(); }
         if (pageName === 'chart') loadChart();
+        if (pageName === 'dashboard') updateDashboard();
     }
 
-    // ---------- 初始化 ----------
     function init() {
-        var navBtns = document.querySelectorAll('nav button');
-        for (var i = 0; i < navBtns.length; i++) navBtns[i].onclick = function() { showPage(this.getAttribute('data-page')); };
+        document.querySelectorAll('nav button').forEach(b => b.onclick = () => showPage(b.dataset.page));
         document.getElementById('save-main-config').onclick = saveMainConfig;
         document.getElementById('save-plugin-config').onclick = savePluginConfig;
         document.getElementById('restart-btn').onclick = restartBot;
         document.getElementById('dep-graph-btn').onclick = loadDependencyGraph;
-        var modeBtns = document.querySelectorAll('#config-view .mode-switch button');
-        for (var i = 0; i < modeBtns.length; i++) {
-            modeBtns[i].onclick = function() {
-                var container = this.closest('.card');
-                if (container.querySelector('h2').innerText.indexOf('主配置') !== -1) {
-                    mainConfigMode = this.getAttribute('data-mode');
-                    loadMainConfig();
-                } else {
-                    pluginConfigMode = this.getAttribute('data-plugin-mode');
-                    var pluginName = document.getElementById('plugin-select').value;
-                    if (pluginName) {
-                        var form = document.getElementById('plugin-config-form');
-                        var jsonArea = document.getElementById('plugin-config-json');
-                        if (pluginConfigMode === 'form') { form.style.display = 'block'; jsonArea.style.display = 'none'; }
-                        else { form.style.display = 'none'; jsonArea.style.display = 'block'; }
-                    }
+        document.getElementById('refresh-market-btn').onclick = loadMarketPlugins;
+        
+        document.querySelectorAll('#config-view .mode-switch button').forEach(b => b.onclick = function() {
+            const card = this.closest('.card');
+            if (card.querySelector('h2').innerText.includes('主配置')) {
+                mainConfigMode = this.dataset.mode; loadMainConfig();
+            } else {
+                pluginConfigMode = this.dataset.pluginMode;
+                const pluginName = document.getElementById('plugin-select').value;
+                if (pluginName) {
+                    document.getElementById('plugin-config-form').style.display = pluginConfigMode === 'form' ? 'block' : 'none';
+                    document.getElementById('plugin-config-json').style.display = pluginConfigMode === 'json' ? 'block' : 'none';
                 }
-                var btns = container.querySelectorAll('.mode-switch button');
-                for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
-                this.classList.add('active');
-            };
-        }
+            }
+            card.querySelectorAll('.mode-switch button').forEach(bt => bt.classList.remove('active'));
+            this.classList.add('active');
+        });
+        
         connectWebSocket();
         setInterval(updateDashboard, 5000);
         updateDashboard();
         showPage('dashboard');
     }
+    
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 </script>
 </body>
-</html>
+    </html>
