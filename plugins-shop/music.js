@@ -3,7 +3,7 @@ const axios = require('axios');
 const path = require('path');
 
 // 插件元数据（供主框架识别）
-module.exports.name = 'music_player';        // 内部名称，不影响 help 显示
+module.exports.name = 'music';        // 内部名称，不影响 help 显示
 module.exports.description = '点歌插件（内部API，支持选择搜索结果）';
 module.exports.usage = '点歌 <歌曲名> 或 !点歌 <歌曲名>';
 module.exports.dependencies = [];
