@@ -56,7 +56,7 @@ node bot.js
 如果一键脚本不适用，可以手动安装：
 
 
-### 克隆仓库
+1.克隆仓库
 
 ```
 git clone https://github.com/ixix-info/iirose-bot.git
@@ -65,21 +65,21 @@ cd iirose-bot
 ```
 
 
-### 安装依赖
+2.安装依赖
 
 ```
 npm install ws cron express lru-cache winston winston-daily-rotate-file express-session
 ```
 
 
-### 创建必要目录
+3.创建必要目录
 
 ```
 mkdir -p data plugins webui logs
 ```
 
 
-### 启动机器人
+4.启动机器人
 
 ```
 export WEBUI_PORT=8080
@@ -88,6 +88,28 @@ export WEB_PASSWORD=admin
 node bot.js
 
 ```
+### Windows手动安装
+
+1. 安装 Node.js：访问 nodejs.org 下载 Windows 安装包（选择 LTS 版本），安装时勾选“Automatically install the necessary tools”。
+2. 安装 Git：访问 git-scm.com 下载并安装。
+3. 克隆项目并安装依赖：
+   ```cmd
+   cd %USERPROFILE%
+   git clone https://github.com/ixix-info/iirose-bot.git
+   cd iirose-bot
+   npm install ws cron express lru-cache winston winston-daily-rotate-file express-session
+   ```
+   
+4. 创建必要文件夹：
+   ```cmd
+   mkdir data plugins webui logs
+   ```
+5. 启动机器人：
+   ```cmd
+   node bot.js
+   ```
+   
+   首次启动会提示配置，访问 http://localhost:8080 进行设置。
 
 ## 配置说明
 
@@ -227,5 +249,5 @@ Web 面板无法访问          检查防火墙是否开放 8080 端口；确认
 
 贡献
 
-欢迎提交 Issue 和 Pull Request。本项目使用 GPL v3.0 许可证，任何贡献都将以相同许可证授权。
+欢迎提交 Issue 和 Pull Request。本项目使用 MIT 许可证。
 
