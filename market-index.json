@@ -78,7 +78,7 @@
       "name": "welcome",
       "displayName": "新用户欢迎",
       "version": "1.0.0",
-      "description": "当用户首次进入房间时自动发送欢迎消息",
+      "description": "当用户进入房间时自动发送欢迎消息",
       "author": "ixix",
       "homepage": "https://github.com/ixix-info/iirose-bot/tree/main/plugins-shop/welcome",
       "downloadUrl": "https://raw.githubusercontent.com/ixix-info/iirose-bot/main/plugins-shop/welcome.js",
