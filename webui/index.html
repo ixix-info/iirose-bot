@@ -5,679 +5,756 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>机器人管理面板</title>
     <style>
-        * { box-sizing: border-box; }
+        :root {
+            --sidebar-bg: #1a1d23;
+            --sidebar-hover: #252830;
+            --sidebar-active: #1f2a3a;
+            --sidebar-text: #a8b2c1;
+            --sidebar-active-text: #e8ecf1;
+            --accent: #5b8def;
+            --accent-light: #7ba5f5;
+            --bg: #f0f3f7;
+            --card-bg: #fff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e8ecf1;
+            --radius: 8px;
+            --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+            --green: #22c55e;
+            --red: #ef4444;
+            --orange: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 0;
-            background-color: #f0f2f5; color: #333;
+            font-family: 'Inter', 'Segoe UI', 'PingFang SC', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
         }
-        .app-container { display: flex; flex-direction: column; height: 100vh; }
-        header {
-            background-color: #2c3e50; color: white;
-            padding: 1rem 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        header h1 { margin: 0; font-size: 1.5rem; }
+        /* 侧边栏 */
         nav {
-            background-color: #34495e; display: flex; gap: 0.5rem;
-            padding: 0 2rem;
+            width: 210px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 0.8rem;
+            gap: 0.25rem;
+            flex-shrink: 0;
+            user-select: none;
+        }
+        nav .nav-logo {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #e8ecf1;
+            padding: 0.6rem 0.8rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.5rem;
         }
         nav button {
-            background: none; border: none; color: #ecf0f1;
-            padding: 0.8rem 1.5rem; font-size: 1rem; cursor: pointer;
-            transition: 0.2s; border-bottom: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: none;
+            border: none;
+            color: var(--sidebar-text);
+            padding: 0.55rem 0.85rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s;
+            text-align: left;
+            width: 100%;
+            font-weight: 500;
         }
-        nav button:hover { background-color: #2c3e50; }
-        nav button.active { border-bottom-color: #3498db; color: white; font-weight: bold; }
-        main { flex: 1; padding: 2rem; overflow-y: auto; }
+        nav button:hover { background: var(--sidebar-hover); color: #d0d8e4; }
+        nav button.active { background: var(--sidebar-active); color: var(--sidebar-active-text); font-weight: 600; }
+        nav .nav-footer { margin-top: auto; font-size: 0.7rem; color: #5a6070; padding: 0.8rem 0.85rem; border-top: 1px solid rgba(255,255,255,0.06); }
+        /* 主区域 */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            background: #fff;
+            padding: 0 1.8rem;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            gap: 0.8rem;
+            flex-shrink: 0;
+        }
+        header .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+        header .status-dot.offline { background: var(--red); }
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 1.8rem 2rem;
+        }
         .page { display: none; }
         .page.active { display: block; }
+        /* 卡片 */
         .card {
-            background: white; border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem;
-            margin-bottom: 2rem;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid #f1f5f9;
+            padding: 1.3rem 1.5rem;
+            margin-bottom: 1.4rem;
         }
-        .card h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-        .status-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1rem;
+        .card h2 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 0.6rem;
         }
-        .status-item { background: #f8f9fa; padding: 0.8rem; border-radius: 6px; }
-        .status-item strong { display: inline-block; width: 100px; }
-        .color-preview {
-            display: inline-block; width: 20px; height: 20px;
-            border-radius: 4px; vertical-align: middle; margin-right: 8px;
-            border: 1px solid #ccc;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #ddd; }
-        th { background-color: #f2f2f2; }
-        .config-row {
-            margin-bottom: 1rem; display: flex; flex-wrap: wrap;
-            align-items: flex-start;
-        }
-        .config-row label { width: 150px; font-weight: bold; padding-top: 0.5rem; }
-        .config-row input, .config-row select, .config-row textarea {
-            flex: 1; padding: 0.5rem; border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.8rem; }
+        .status-item { background: #f8fafc; padding: 0.65rem 0.8rem; border-radius: 6px; font-size: 0.82rem; border:1px solid #f1f5f9; }
+        .status-item .label { font-weight: 600; color: var(--text-secondary); display: inline-block; width: 75px; }
+        .color-preview { display: inline-block; width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; margin-right: 5px; border:1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        th, td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
+        th { background: #f8fafc; font-weight: 600; color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; }
         button {
-            background-color: #3498db; color: white; border: none;
-            padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer;
-            font-size: 0.9rem; transition: 0.2s;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0.4rem 0.9rem;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
         }
-        button:hover { background-color: #2980b9; }
-        button.danger { background-color: #e74c3c; }
-        button.danger:hover { background-color: #c0392b; }
-        button.success { background-color: #27ae60; }
-        button.success:hover { background-color: #219a52; }
-        .mode-switch { margin-bottom: 1rem; display: flex; gap: 0.5rem; }
-        .mode-switch button {
-            background-color: #ecf0f1; color: #2c3e50;
+        button:hover { background: #4a7de0; }
+        button.danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        button.danger:hover { background: #fee2e2; }
+        button.secondary { background: #f1f5f9; color: #475569; border:1px solid #e2e8f0; }
+        button.secondary:hover { background: #e2e8f0; }
+        .mode-switch { display: inline-flex; gap:0; background: #f1f5f9; border-radius: 5px; padding:2px; margin-bottom: 0.8rem; }
+        .mode-switch button { background: transparent; color: #64748b; box-shadow: none; padding: 0.3rem 0.8rem; font-size: 0.78rem; }
+        .mode-switch button.active { background: #fff; color: #1e293b; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .config-row { display: flex; align-items: center; margin-bottom: 0.7rem; gap: 0.6rem; }
+        .config-row label { width: 120px; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); flex-shrink: 0; }
+        .config-row input, .config-row select, .config-row textarea {
+            flex:1; padding: 0.4rem 0.6rem; border: 1.5px solid #e2e8f0; border-radius: 5px; font-size: 0.82rem;
+            background: #fafbfc; outline: none; transition: border 0.15s;
         }
-        .mode-switch button.active { background-color: #3498db; color: white; }
-        .logs-box {
-            background: #1e1e2f; color: #f8f8f2; padding: 1rem;
-            border-radius: 6px; font-family: monospace; font-size: 0.85rem;
-            height: 300px; overflow-y: auto; white-space: pre-wrap;
-        }
-        .flex-btns { display: flex; gap: 0.5rem; margin-top: 1rem; }
-        .market-tag {
-            display: inline-block; padding: 2px 8px; border-radius: 12px;
-            font-size: 0.8rem; font-weight: bold;
-        }
-        .tag-installed { background-color: #d4edda; color: #155724; }
-        .tag-update { background-color: #fff3cd; color: #856404; }
-        .tag-notinstalled { background-color: #f8d7da; color: #721c24; }
-        @media (max-width: 700px) {
-            .config-row label { width: 100%; margin-bottom: 0.3rem; }
-            nav button { padding: 0.5rem 1rem; }
+        .config-row input:focus, .config-row select:focus { border-color: var(--accent); }
+        textarea { font-family: var(--font-mono); resize: vertical; min-height: 70px; }
+        .logs-box { background: #1a1d23; color: #c9d1d9; padding: 0.9rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.75rem; height: 220px; overflow-y: auto; white-space: pre-wrap; }
+        .flex-btns { display: flex; gap: 0.5rem; margin-top: 0.9rem; flex-wrap: wrap; }
+        @media (max-width: 800px) {
+            body { flex-direction: column; }
+            nav { width: 100%; flex-direction: row; padding: 0.4rem 0.6rem; overflow-x: auto; }
+            nav button { font-size: 0.75rem; padding: 0.35rem 0.6rem; }
+            main { padding: 1rem; }
         }
     </style>
     <script src="echarts.min.js"></script>
 </head>
 <body>
-<div class="app-container">
-    <header>
-        <h1>机器人管理面板</h1>
-    </header>
     <nav>
+        <div class="nav-logo">机器人管理面板</div>
         <button data-page="dashboard" class="active">仪表盘</button>
         <button data-page="plugins">插件管理</button>
-        <button data-page="market">插件市场</button>
         <button data-page="config">配置中心</button>
         <button data-page="chart">图表</button>
+        <button data-page="market">插件市场</button>
+        <div class="nav-footer">Koishi · IIROSE</div>
     </nav>
-    <main>
-        <!-- 仪表盘页面 -->
-        <div id="dashboard-view" class="page active">
-            <div class="card">
-                <h2>机器人状态</h2>
-                <div class="status-grid">
-                    <div class="status-item"><strong>状态:</strong> <span id="online-status">--</span></div>
-                    <div class="status-item"><strong>运行时间:</strong> <span id="uptime">--</span></div>
-                    <div class="status-item"><strong>当前用户:</strong> <span id="username">--</span></div>
-                    <div class="status-item"><strong>当前房间:</strong> <span id="current-room">--</span></div>
-                    <div class="status-item"><strong>消息颜色:</strong> <span id="color-preview" class="color-preview"></span><span id="color-value">--</span></div>
-                    <div class="status-item"><strong>签名:</strong> <span id="signature">--</span></div>
-                    <div class="status-item"><strong>主人:</strong> <span id="owner">--</span></div>
-                    <div class="status-item"><strong>管理员:</strong> <span id="admins">--</span></div>
+    <div class="main-area">
+        <header>
+            <span class="status-dot" id="header-dot"></span>
+            <span style="font-weight:500; font-size:0.88rem;" id="header-status-text">离线</span>
+            <span style="margin-left:auto; font-size:0.78rem; color:var(--text-secondary);">v2.0</span>
+        </header>
+        <main>
+            <!-- 仪表盘 -->
+            <div id="dashboard-view" class="page active">
+                <div class="card">
+                    <h2>状态概览</h2>
+                    <div class="status-grid">
+                        <div class="status-item"><span class="label">状态</span><span id="online-status">--</span></div>
+                        <div class="status-item"><span class="label">运行时间</span><span id="uptime">--</span></div>
+                        <div class="status-item"><span class="label">当前用户</span><span id="username">--</span></div>
+                        <div class="status-item"><span class="label">当前房间</span><span id="current-room">--</span></div>
+                        <div class="status-item"><span class="label">消息颜色</span><span class="color-preview" id="color-preview"></span><span id="color-value">--</span></div>
+                        <div class="status-item"><span class="label">签名</span><span id="signature">--</span></div>
+                        <div class="status-item"><span class="label">主人</span><span id="owner">--</span></div>
+                        <div class="status-item"><span class="label">管理员</span><span id="admins">--</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>已加载插件</h2>
+                    <table id="plugins-table"><thead><tr><th>名称</th><th>命令数</th></tr></thead><tbody></tbody></table>
+                </div>
+                <div class="card">
+                    <h2>实时日志</h2>
+                    <div id="logs" class="logs-box">暂无日志</div>
                 </div>
             </div>
-            <div class="card">
-                <h2>已加载插件</h2>
-                <table id="plugins-table">
-                    <thead><tr><th>插件名</th><th>命令数量</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div class="card">
-                <h2>实时日志</h2>
-                <div id="logs" class="logs-box">暂无日志</div>
-            </div>
-        </div>
-
-        <!-- 插件管理页面 -->
-        <div id="plugins-view" class="page">
-            <div class="card">
-                <div class="flex-btns" style="justify-content: space-between;">
-                    <h2>插件详情 & 管理</h2>
-                    <button id="dep-graph-btn">显示依赖图</button>
-                </div>
-                <table id="plugins-detail-table">
-                    <thead>
-                        <tr><th>名称</th><th>描述</th><th>命令数</th><th>依赖</th><th>状态</th><th>操作</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div class="flex-btns">
-                    <button id="restart-btn" class="danger">重启机器人</button>
+            <!-- 插件管理 -->
+            <div id="plugins-view" class="page">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="margin-bottom:0; border:none;">插件详情 & 管理</h2>
+                        <button id="dep-graph-btn" class="secondary">显示依赖图</button>
+                    </div>
+                    <table id="plugins-detail-table" style="margin-top:0.9rem;">
+                        <thead><tr><th>名称</th><th>描述</th><th>命令</th><th>依赖</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="flex-btns">
+                        <button id="restart-btn" class="danger">重启机器人</button>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- 插件市场页面 -->
-        <div id="market-view" class="page">
-            <div class="card">
-                <h2>插件市场</h2>
-                <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
-                    <button id="refresh-market-btn">刷新列表</button>
-                    <span id="market-last-update" style="color: #666; line-height: 2.2;"></span>
+            <!-- 配置中心 -->
+            <div id="config-view" class="page">
+                <div class="card">
+                    <h2>主配置</h2>
+                    <div class="mode-switch">
+                        <button data-mode="form" class="active">表单模式</button>
+                        <button data-mode="json">JSON 模式</button>
+                    </div>
+                    <div id="main-config-form"></div>
+                    <textarea id="main-config-json" rows="10" style="width:100%; display:none; font-family:monospace;"></textarea>
+                    <button id="save-main-config" style="margin-top:0.6rem;">保存主配置</button>
                 </div>
-                <table id="market-table">
-                    <thead>
-                        <tr>
-                            <th>名称</th><th>版本</th><th>描述</th><th>作者</th>
-                            <th>依赖 (npm)</th><th>状态</th><th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 配置中心页面 -->
-        <div id="config-view" class="page">
-            <div class="card">
-                <h2>主配置</h2>
-                <div class="mode-switch">
-                    <button data-mode="form" class="active">表单模式</button>
-                    <button data-mode="json">JSON 模式</button>
-                </div>
-                <div id="main-config-form"></div>
-                <textarea id="main-config-json" rows="12" style="width:100%; display:none; font-family:monospace;"></textarea>
-                <div class="flex-btns">
-                    <button id="save-main-config">保存主配置</button>
+                <div class="card">
+                    <h2>插件配置</h2>
+                    <label style="font-size:0.8rem; font-weight:600;">选择插件：</label>
+                    <select id="plugin-select" style="width:220px; padding:0.35rem;"></select>
+                    <div class="mode-switch" style="margin-top:0.7rem;">
+                        <button data-plugin-mode="form" class="active">表单模式</button>
+                        <button data-plugin-mode="json">JSON 模式</button>
+                    </div>
+                    <div id="plugin-schema-table" style="margin-bottom:0.6rem;"></div>
+                    <div id="plugin-config-form"></div>
+                    <textarea id="plugin-config-json" rows="10" style="width:100%; display:none; font-family:monospace;"></textarea>
+                    <button id="save-plugin-config" style="margin-top:0.6rem;">保存插件配置</button>
                 </div>
             </div>
-            <div class="card">
-                <h2>插件配置</h2>
-                <div>
-                    <label>选择插件：</label>
-                    <select id="plugin-select" style="width: 250px; padding: 0.4rem;"></select>
-                </div>
-                <div class="mode-switch" style="margin-top: 1rem;">
-                    <button data-plugin-mode="form" class="active">表单模式</button>
-                    <button data-plugin-mode="json">JSON 模式</button>
-                </div>
-                <div id="plugin-schema-table" style="background: #f9f9f9; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;"></div>
-                <div id="plugin-config-form"></div>
-                <textarea id="plugin-config-json" rows="12" style="width:100%; display:none; font-family:monospace;"></textarea>
-                <div class="flex-btns">
-                    <button id="save-plugin-config">保存插件配置</button>
+            <!-- 图表 -->
+            <div id="chart-view" class="page">
+                <div class="card">
+                    <h2>在线人数趋势（最近24小时）</h2>
+                    <div id="online-chart" style="height:360px;"></div>
                 </div>
             </div>
-        </div>
-
-        <!-- 图表页面 -->
-        <div id="chart-view" class="page">
-            <div class="card">
-                <h2>当前房间在线人数趋势</h2>
-                <div id="online-chart" style="height: 400px;"></div>
+            <!-- 插件市场 -->
+            <div id="market-view" class="page">
+                <div class="card">
+                    <h2>插件市场</h2>
+                    <table id="market-table">
+                        <thead><tr><th>名称</th><th>版本</th><th>描述</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    </main>
-</div>
+        </main>
+    </div>
 
-<script>
-    let currentPage = 'dashboard';
-    let mainConfigMode = 'form';
-    let pluginConfigMode = 'form';
-    let ws = null;
+    <script>
+        // ---------- 全局变量 ----------
+        var currentPage = 'dashboard';
+        var mainConfigMode = 'form';
+        var pluginConfigMode = 'form';
+        var ws = null;
 
-    function httpGet(url, callback) {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    try { callback(null, JSON.parse(xhr.responseText)); }
-                    catch (e) { callback(e, null); }
-                } else { callback(new Error('HTTP ' + xhr.status), null); }
-            }
-        };
-        xhr.send();
-    }
+        // HTTP 请求
+        function httpGet(url, cb) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) { try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e); } }
+                    else { cb(new Error('HTTP ' + xhr.status)); }
+                }
+            };
+            xhr.send();
+        }
+        function httpPost(url, data, cb) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) { try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e); } }
+                    else { cb(new Error('HTTP ' + xhr.status)); }
+                }
+            };
+            xhr.send(JSON.stringify(data));
+        }
 
-    function httpPost(url, data, callback) {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    try { callback(null, JSON.parse(xhr.responseText)); }
-                    catch (e) { callback(e, null); }
-                } else { callback(new Error('HTTP ' + xhr.status), null); }
-            }
-        };
-        xhr.send(JSON.stringify(data));
-    }
+        // WebSocket 日志
+        function connectWS() {
+            var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(proto + '//' + window.location.host);
+            ws.onmessage = function(e) {
+                var log = JSON.parse(e.data);
+                var box = document.getElementById('logs');
+                box.innerText = '[' + log.time + '] ' + log.message + '\n' + box.innerText;
+                var lines = box.innerText.split('\n');
+                if (lines.length > 100) box.innerText = lines.slice(0,100).join('\n');
+            };
+            ws.onclose = function() { setTimeout(connectWS, 3000); };
+        }
 
-    function connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(protocol + '//' + window.location.host);
-        ws.onmessage = function(event) {
-            const log = JSON.parse(event.data);
-            const logContainer = document.getElementById('logs');
-            const currentText = logContainer.innerText;
-            logContainer.innerText = '[' + log.time + '] ' + log.message + '\n' + currentText;
-            const lines = logContainer.innerText.split('\n');
-            if (lines.length > 100) logContainer.innerText = lines.slice(0, 100).join('\n');
-        };
-        ws.onclose = function() { setTimeout(connectWebSocket, 3000); };
-    }
+        // 更新头部状态
+        function updateHeader(online) {
+            var dot = document.getElementById('header-dot');
+            var txt = document.getElementById('header-status-text');
+            if (online) { dot.classList.remove('offline'); txt.innerText = '在线'; }
+            else { dot.classList.add('offline'); txt.innerText = '离线'; }
+        }
 
-    function updateDashboard() {
-        httpGet('/api/status', function(err, status) {
-            if (err) return;
-            document.getElementById('online-status').innerText = status.online ? '在线' : '离线';
-            document.getElementById('uptime').innerText = status.uptime;
-            document.getElementById('username').innerText = status.username;
-            document.getElementById('current-room').innerText = status.currentRoom;
-            document.getElementById('color-preview').style.backgroundColor = '#' + status.color;
-            document.getElementById('color-value').innerText = '#' + status.color;
-            document.getElementById('signature').innerText = status.signature || '无';
-            const ownerText = status.ownerName ? status.ownerName + ' (' + status.ownerUid + ')' : '未配置';
-            document.getElementById('owner').innerText = ownerText;
-            const admins = status.adminList.map(a => a.name || a.uid).join(', ') || '无';
-            document.getElementById('admins').innerText = admins;
-        });
-        httpGet('/api/plugins', function(err, plugins) {
-            if (err) return;
-            const tbody = document.querySelector('#plugins-table tbody');
-            tbody.innerHTML = '';
-            plugins.forEach(p => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = p.name;
-                row.insertCell(1).innerText = p.commandCount;
+        // 仪表盘数据
+        function refreshDashboard() {
+            httpGet('/api/status', function(err, s) {
+                if (err) return;
+                document.getElementById('online-status').innerText = s.online ? '在线' : '离线';
+                document.getElementById('uptime').innerText = s.uptime;
+                document.getElementById('username').innerText = s.username || '--';
+                document.getElementById('current-room').innerText = s.currentRoom || '--';
+                document.getElementById('color-preview').style.backgroundColor = '#' + (s.color||'ccc');
+                document.getElementById('color-value').innerText = '#' + (s.color||'--');
+                document.getElementById('signature').innerText = s.signature || '无';
+                document.getElementById('owner').innerText = (s.ownerName ? s.ownerName + ' (' + s.ownerUid + ')' : '未配置');
+                document.getElementById('admins').innerText = (s.adminList||[]).map(function(a){return a.name||a.uid;}).join(', ') || '无';
+                updateHeader(s.online);
             });
-        });
-        httpGet('/api/logs?limit=30', function(err, logs) {
-            if (err) return;
-            const logText = logs.map(l => '[' + l.time + '] ' + l.message).join('\n');
-            document.getElementById('logs').innerText = logText || '暂无日志';
-        });
-    }
+            httpGet('/api/plugins', function(err, list) {
+                if (err) return;
+                var tbody = document.querySelector('#plugins-table tbody');
+                tbody.innerHTML = '';
+                (list||[]).forEach(function(p) {
+                    var row = tbody.insertRow();
+                    row.insertCell(0).innerText = p.name;
+                    row.insertCell(1).innerText = p.commandCount;
+                });
+            });
+            httpGet('/api/logs?limit=20', function(err, logs) {
+                if (err) return;
+                var text = '';
+                (logs||[]).forEach(function(l) { text += '[' + l.time + '] ' + l.message + '\n'; });
+                document.getElementById('logs').innerText = text || '暂无日志';
+            });
+        }
 
-    function loadPluginsDetail() {
-        httpGet('/api/plugins/detail', function(err, plugins) {
-            if (err) return;
-            const tbody = document.querySelector('#plugins-detail-table tbody');
-            tbody.innerHTML = '';
-            plugins.forEach(p => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = p.name;
-                row.insertCell(1).innerText = p.description || '无';
-                row.insertCell(2).innerText = p.commandCount;
-                row.insertCell(3).innerText = (p.dependencies || []).join(', ') || '无';
-                const statusCell = row.insertCell(4);
-                const toggleBtn = document.createElement('button');
-                toggleBtn.innerText = p.enabled ? '禁用' : '启用';
-                toggleBtn.style.backgroundColor = p.enabled ? '#dc3545' : '#28a745';
-                toggleBtn.onclick = () => {
-                    httpPost('/api/plugin/toggle', { pluginName: p.name, enabled: !p.enabled }, err => {
-                        if (err) alert('操作失败: ' + err.message);
-                        else { loadPluginsDetail(); loadMarketPlugins(); }
+        // 插件管理表格
+        function loadPluginsDetail() {
+            httpGet('/api/plugins/detail', function(err, list) {
+                if (err) return;
+                var tbody = document.querySelector('#plugins-detail-table tbody');
+                tbody.innerHTML = '';
+                (list||[]).forEach(function(p) {
+                    var row = tbody.insertRow();
+                    row.insertCell(0).innerText = p.name;
+                    row.insertCell(1).innerText = p.description || '无';
+                    row.insertCell(2).innerText = p.commandCount;
+                    row.insertCell(3).innerText = (p.dependencies||[]).join(', ') || '无';
+                    var btn = document.createElement('button');
+                    btn.className = p.enabled ? 'danger' : '';
+                    btn.innerText = p.enabled ? '禁用' : '启用';
+                    btn.style.fontSize = '0.72rem';
+                    btn.style.padding = '0.25rem 0.6rem';
+                    btn.onclick = (function(name, cur) {
+                        return function() {
+                            httpPost('/api/plugin/toggle', {pluginName: name, enabled: !cur}, function(err) {
+                                if (err) alert('操作失败');
+                                else loadPluginsDetail();
+                            });
+                        };
+                    })(p.name, p.enabled);
+                    var cell5 = row.insertCell(4);
+                    cell5.appendChild(btn);
+                    var cell6 = row.insertCell(5);
+                    var rld = document.createElement('button');
+                    rld.className = 'secondary';
+                    rld.innerText = '重载';
+                    rld.style.fontSize = '0.72rem';
+                    rld.style.padding = '0.25rem 0.6rem';
+                    rld.onclick = (function(name) {
+                        return function() {
+                            if (confirm('重载插件 ' + name + '？')) {
+                                httpPost('/api/plugin/reload/' + name, {}, function(err) {
+                                    if (err) alert('失败');
+                                    else loadPluginsDetail();
+                                });
+                            }
+                        };
+                    })(p.name);
+                    cell6.appendChild(rld);
+                });
+            });
+        }
+
+        // 依赖图
+        function loadDependencyGraph() {
+            var loading = document.createElement('div');
+            loading.innerText = '加载中...';
+            loading.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:1rem;border-radius:8px;z-index:1001;';
+            document.body.appendChild(loading);
+            httpGet('/api/plugins/deps-graph', function(err, data) {
+                loading.remove();
+                if (err) { alert('获取依赖图失败'); return; }
+                if (!data.nodes || !data.nodes.length) { alert('无数据'); return; }
+                var modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+                var canvas = document.createElement('canvas');
+                canvas.width = 900; canvas.height = 700;
+                canvas.style.cssText = 'background:#1a1d23;border-radius:12px;';
+                var toolbar = document.createElement('div');
+                toolbar.style.marginBottom = '10px';
+                toolbar.innerHTML = '<button id="dep-reset" class="secondary" style="font-size:0.78rem;">重置视图</button> '+
+                    '<button id="dep-zoomin" class="secondary" style="font-size:0.78rem;">+放大</button> '+
+                    '<button id="dep-zoomout" class="secondary" style="font-size:0.78rem;">-缩小</button> '+
+                    '<span id="dep-zoomlbl" style="color:#fff;margin-left:10px;">100%</span>';
+                var closeBtn = document.createElement('button');
+                closeBtn.innerText = '关闭';
+                closeBtn.className = 'danger';
+                closeBtn.style.cssText = 'position:absolute;top:15px;right:15px;';
+                modal.appendChild(toolbar);
+                modal.appendChild(canvas);
+                modal.appendChild(closeBtn);
+                document.body.appendChild(modal);
+
+                var nodes = data.nodes, edges = data.edges;
+                var positions = {}, velocity = {};
+                nodes.forEach(function(n, i) {
+                    var angle = (i/nodes.length)*2*Math.PI;
+                    positions[n.id] = { x: 450 + 300*Math.cos(angle), y: 350 + 300*Math.sin(angle) };
+                    velocity[n.id] = {x:0,y:0};
+                });
+                var transform = { scale:1, offsetX:450, offsetY:350 };
+                var dragging = false, dragNode = null;
+                function draw() {
+                    var ctx = canvas.getContext('2d');
+                    ctx.clearRect(0,0,900,700);
+                    ctx.save();
+                    ctx.translate(transform.offsetX, transform.offsetY);
+                    ctx.scale(transform.scale, transform.scale);
+                    ctx.strokeStyle = '#555';
+                    edges.forEach(function(e) {
+                        var from = positions[e.from], to = positions[e.to];
+                        if (from && to) { ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); }
                     });
-                };
-                statusCell.appendChild(toggleBtn);
-                const actionCell = row.insertCell(5);
-                const reloadBtn = document.createElement('button');
-                reloadBtn.innerText = '重载';
-                reloadBtn.style.marginRight = '5px';
-                reloadBtn.onclick = () => {
-                    if (confirm('确定要热重载插件 ' + p.name + ' 吗？')) {
-                        httpPost('/api/plugin/reload/' + p.name, {}, err => {
-                            if (err) alert('重载失败: ' + err.message);
-                            else alert('重载成功');
+                    nodes.forEach(function(n) {
+                        var p = positions[n.id];
+                        ctx.fillStyle = n.enabled ? '#22c55e' : '#ef4444';
+                        ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, 2*Math.PI); ctx.fill();
+                        ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+                        ctx.fillText(n.label.length>10?n.label.slice(0,9)+'…':n.label, p.x, p.y+4);
+                    });
+                    ctx.restore();
+                    document.getElementById('dep-zoomlbl').innerText = Math.round(transform.scale*100)+'%';
+                }
+                function updatePhysics() {
+                    for (var i=0;i<10;i++) {
+                        nodes.forEach(function(n) {
+                            var fx=0,fy=0, p=positions[n.id];
+                            nodes.forEach(function(o) {
+                                if (o.id===n.id) return;
+                                var op=positions[o.id], dx=p.x-op.x, dy=p.y-op.y, dist=Math.hypot(dx,dy)+1;
+                                fx += (dx/dist)*2000/(dist*dist);
+                                fy += (dy/dist)*2000/(dist*dist);
+                            });
+                            edges.forEach(function(e) {
+                                var target = e.from===n.id ? positions[e.to] : (e.to===n.id ? positions[e.from] : null);
+                                if (target) {
+                                    var dx=p.x-target.x, dy=p.y-target.y, dist=Math.hypot(dx,dy);
+                                    fx -= (dx/(dist+0.01))*0.03*(dist-180);
+                                    fy -= (dy/(dist+0.01))*0.03*(dist-180);
+                                }
+                            });
+                            velocity[n.id].x = (velocity[n.id].x+fx)*0.9;
+                            velocity[n.id].y = (velocity[n.id].y+fy)*0.9;
+                            p.x = Math.min(880, Math.max(20, p.x+velocity[n.id].x));
+                            p.y = Math.min(680, Math.max(20, p.y+velocity[n.id].y));
                         });
                     }
-                };
-                actionCell.appendChild(reloadBtn);
-                const restartBtn = document.createElement('button');
-                restartBtn.innerText = '重启';
-                restartBtn.onclick = () => document.getElementById('restart-btn').click();
-                actionCell.appendChild(restartBtn);
-            });
-        });
-    }
-
-    // ---------- 插件市场 ----------
-    function loadMarketPlugins() {
-        httpGet('/api/market/list', function(err, data) {
-            if (err) { alert('获取市场列表失败: ' + err.message); return; }
-            const tbody = document.querySelector('#market-table tbody');
-            tbody.innerHTML = '';
-            if (data.updated) {
-                document.getElementById('market-last-update').innerText = '更新于: ' + new Date(data.updated).toLocaleString();
-            }
-            data.plugins.forEach(p => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerHTML = `<strong>${p.displayName || p.name}</strong><br><small>${p.name}</small>`;
-                row.insertCell(1).innerText = p.version;
-                row.insertCell(2).innerText = p.description || '';
-                row.insertCell(3).innerText = p.author || '';
-                row.insertCell(4).innerText = (p.npmDependencies || []).join(', ') || '无';
-                
-                const statusCell = row.insertCell(5);
-                if (p.installed) {
-                    let statusHtml = `<span class="market-tag tag-installed">已安装 ${p.installedVersion || ''}</span>`;
-                    if (p.hasUpdate) statusHtml += `<span class="market-tag tag-update" style="margin-left:5px;">有新版本 ${p.version}</span>`;
-                    statusCell.innerHTML = statusHtml;
-                } else {
-                    statusCell.innerHTML = '<span class="market-tag tag-notinstalled">未安装</span>';
+                    draw();
                 }
-                
-                const actionCell = row.insertCell(6);
-                if (p.installed && !p.hasUpdate) {
-                    const uninstallBtn = document.createElement('button');
-                    uninstallBtn.innerText = '卸载';
-                    uninstallBtn.style.backgroundColor = '#dc3545';
-                    uninstallBtn.onclick = () => uninstallMarketPlugin(p.name);
-                    actionCell.appendChild(uninstallBtn);
-                } else {
-                    const installBtn = document.createElement('button');
-                    installBtn.innerText = p.installed ? '更新' : '安装';
-                    installBtn.className = p.installed ? '' : 'success';
-                    installBtn.onclick = () => installMarketPlugin(p.name, p.downloadUrl, p.version);
-                    actionCell.appendChild(installBtn);
-                    if (p.installed) {
-                        const uninstallBtn = document.createElement('button');
-                        uninstallBtn.innerText = '卸载';
-                        uninstallBtn.style.backgroundColor = '#dc3545';
-                        uninstallBtn.style.marginLeft = '5px';
-                        uninstallBtn.onclick = () => uninstallMarketPlugin(p.name);
-                        actionCell.appendChild(uninstallBtn);
-                    }
-                }
-            });
-        });
-    }
-
-    function installMarketPlugin(name, url, version) {
-        if (!confirm(`确定要安装/更新插件 ${name} 吗？`)) return;
-        httpPost('/api/market/install', { pluginName: name, downloadUrl: url, version }, function(err, result) {
-            if (err) alert('操作失败: ' + err.message);
-            else { alert(result.message); loadMarketPlugins(); loadPluginsDetail(); }
-        });
-    }
-
-    function uninstallMarketPlugin(name) {
-        if (!confirm(`确定要卸载插件 ${name} 吗？\n插件文件将被删除，且无法恢复。`)) return;
-        httpPost('/api/market/uninstall', { pluginName: name }, function(err, result) {
-            if (err) alert('操作失败: ' + err.message);
-            else { alert(result.message); loadMarketPlugins(); loadPluginsDetail(); }
-        });
-    }
-
-    // ---------- 依赖图 ----------
-    function loadDependencyGraph() {
-        httpGet('/api/plugins/deps-graph', function(err, data) {
-            if (err) { alert('获取依赖图失败'); return; }
-            const nodes = data.nodes, edges = data.edges;
-            if (!nodes.length) { alert('无插件数据'); return; }
-            
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center';
-            const canvas = document.createElement('canvas');
-            canvas.width = 900; canvas.height = 700;
-            canvas.style.cssText = 'background:#1e1e2f;border-radius:8px;';
-            modal.appendChild(canvas);
-            const closeBtn = document.createElement('button');
-            closeBtn.innerText = '关闭';
-            closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;padding:6px 12px;';
-            closeBtn.onclick = () => modal.remove();
-            modal.appendChild(closeBtn);
-            document.body.appendChild(modal);
-            
-            const ctx = canvas.getContext('2d');
-            const nodeRadius = 22;
-            const positions = {};
-            nodes.forEach((n, i) => {
-                const angle = (i / nodes.length) * 2 * Math.PI;
-                positions[n.id] = { x: 450 + 300 * Math.cos(angle), y: 350 + 250 * Math.sin(angle) };
-            });
-            
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // 边
-                ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
-                edges.forEach(e => {
-                    const from = positions[e.from], to = positions[e.to];
-                    if (from && to) {
-                        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
-                    }
-                });
-                // 节点
-                nodes.forEach(n => {
-                    const pos = positions[n.id];
-                    ctx.beginPath();
-                    ctx.fillStyle = n.enabled ? '#5cb85c' : '#d9534f';
-                    ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-                    ctx.stroke();
-                    ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(n.label.length > 12 ? n.label.slice(0,10)+'…' : n.label, pos.x, pos.y);
-                });
-            }
-            draw();
-        });
-    }
-
-    // ---------- 主配置 ----------
-    function buildMainConfigForm(config) {
-        const fields = [
-            { name: 'username', label: '用户名', type: 'text' },
-            { name: 'password', label: '密码', type: 'password' },
-            { name: 'defaultRoomId', label: '默认房间ID', type: 'text' },
-            { name: 'roomPassword', label: '房间密码', type: 'text' },
-            { name: 'color', label: '消息颜色', type: 'text' },
-            { name: 'signature', label: '签名', type: 'text' },
-            { name: 'logLevel', label: '日志级别', type: 'select', options: ['error','warn','info','debug'] },
-            { name: 'ownerUid', label: '主人UID', type: 'text' },
-            { name: 'ownerName', label: '主人名称', type: 'text' },
-            { name: 'adminList', label: '管理员列表', type: 'textarea' }
-        ];
-        const form = document.getElementById('main-config-form');
-        form.innerHTML = '';
-        fields.forEach(f => {
-            const div = document.createElement('div');
-            div.className = 'config-row';
-            div.innerHTML = `<label>${f.label}</label>`;
-            let input;
-            if (f.type === 'select') {
-                input = document.createElement('select');
-                f.options.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.innerText = o; input.appendChild(opt); });
-            } else if (f.type === 'textarea') {
-                input = document.createElement('textarea'); input.rows = 3;
-            } else {
-                input = document.createElement('input'); input.type = f.type;
-            }
-            input.name = f.name;
-            if (f.name === 'adminList') input.value = JSON.stringify(config[f.name] || [], null, 2);
-            else input.value = config[f.name] !== undefined ? config[f.name] : '';
-            div.appendChild(input);
-            form.appendChild(div);
-        });
-    }
-
-    function loadMainConfig() {
-        httpGet('/api/config/main', function(err, config) {
-            if (err) return;
-            buildMainConfigForm(config);
-            document.getElementById('main-config-json').value = JSON.stringify(config, null, 2);
-            document.getElementById('main-config-json').style.display = mainConfigMode === 'json' ? 'block' : 'none';
-            document.getElementById('main-config-form').style.display = mainConfigMode === 'form' ? 'block' : 'none';
-        });
-    }
-
-    function saveMainConfig() {
-        let config;
-        if (mainConfigMode === 'form') {
-            const form = document.getElementById('main-config-form');
-            const formData = {};
-            form.querySelectorAll('input, select, textarea').forEach(input => {
-                let value = input.value;
-                if (input.name === 'adminList') { try { value = JSON.parse(value); } catch { alert('管理员列表 JSON 格式错误'); return; } }
-                formData[input.name] = value;
-            });
-            config = formData;
-        } else {
-            try { config = JSON.parse(document.getElementById('main-config-json').value); }
-            catch { alert('JSON 格式错误'); return; }
-        }
-        httpPost('/api/config/main', config, err => {
-            if (err) alert('保存失败: ' + err.message);
-            else alert('保存成功，请重启机器人');
-        });
-    }
-
-    // ---------- 插件配置 ----------
-    function loadPluginSelect() {
-        httpGet('/api/plugins/detail', function(err, plugins) {
-            if (err) return;
-            const select = document.getElementById('plugin-select');
-            select.innerHTML = '<option value="">-- 选择插件 --</option>';
-            plugins.forEach(p => { const opt = document.createElement('option'); opt.value = p.name; opt.innerText = p.name; select.appendChild(opt); });
-            select.onchange = function() {
-                const pluginName = select.value;
-                const form = document.getElementById('plugin-config-form');
-                const jsonArea = document.getElementById('plugin-config-json');
-                const schemaDiv = document.getElementById('plugin-schema-table');
-                if (!pluginName) { form.style.display = 'none'; jsonArea.style.display = 'none'; schemaDiv.innerHTML = ''; return; }
-                httpGet('/api/config/plugin/' + pluginName, function(err, config) {
-                    if (err) return;
-                    httpGet('/api/plugin/schema/' + pluginName, function(err, schema) {
-                        if (err) return;
-                        if (!schema || !Object.keys(schema).length) schemaDiv.innerHTML = '<p>该插件未提供配置说明。</p>';
-                        else {
-                            let html = '<table><thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead><tbody>';
-                            for (let f in schema) html += `<tr><td>${f}</td><td>${schema[f].type||'string'}</td><td>${schema[f].description||''}</td></tr>`;
-                            html += '</tbody></table>';
-                            schemaDiv.innerHTML = html;
-                        }
-                        // 表单生成
-                        const formDiv = document.getElementById('plugin-config-form');
-                        formDiv.innerHTML = '';
-                        if (schema) {
-                            for (let f in schema) {
-                                const info = schema[f];
-                                const div = document.createElement('div'); div.className = 'config-row';
-                                div.innerHTML = `<label>${f}</label>`;
-                                let input;
-                                if (info.type === 'boolean') {
-                                    input = document.createElement('input'); input.type = 'checkbox';
-                                    input.checked = config[f] || false;
-                                } else {
-                                    input = document.createElement('input'); input.type = 'text';
-                                    input.value = config[f] !== undefined ? config[f] : '';
-                                }
-                                input.name = f;
-                                div.appendChild(input);
-                                formDiv.appendChild(div);
-                            }
-                        }
-                        jsonArea.value = JSON.stringify(config, null, 2);
-                        if (pluginConfigMode === 'form') { formDiv.style.display = 'block'; jsonArea.style.display = 'none'; }
-                        else { formDiv.style.display = 'none'; jsonArea.style.display = 'block'; }
+                var anim = setInterval(updatePhysics, 30);
+                canvas.onmousedown = function(e) {
+                    var rect = canvas.getBoundingClientRect();
+                    var mx = (e.clientX-rect.left)*(900/rect.width), my = (e.clientY-rect.top)*(700/rect.height);
+                    var hit = null;
+                    nodes.forEach(function(n) {
+                        var p=positions[n.id], dx=mx-p.x, dy=my-p.y;
+                        if (Math.hypot(dx,dy)<20) hit = n;
                     });
-                });
-            };
-        });
-    }
-
-    function savePluginConfig() {
-        const pluginName = document.getElementById('plugin-select').value;
-        if (!pluginName) { alert('请选择插件'); return; }
-        let config;
-        if (pluginConfigMode === 'form') {
-            const form = document.getElementById('plugin-config-form');
-            config = {};
-            form.querySelectorAll('input').forEach(i => { config[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
-        } else {
-            try { config = JSON.parse(document.getElementById('plugin-config-json').value); }
-            catch { alert('JSON 格式错误'); return; }
-        }
-        httpPost('/api/config/plugin/' + pluginName, config, err => {
-            if (err) alert('保存失败: ' + err.message);
-            else alert('保存成功');
-        });
-    }
-
-    function restartBot() {
-        if (confirm('确定重启机器人吗？')) {
-            httpPost('/api/system/restart', {}, err => {
-                if (err) alert('重启失败: ' + err.message);
-                else { alert('正在重启...'); setTimeout(() => location.reload(), 2000); }
+                    if (hit) { dragging=true; dragNode=hit; e.preventDefault(); }
+                };
+                canvas.onmousemove = function(e) {
+                    if (dragging && dragNode) {
+                        var rect = canvas.getBoundingClientRect();
+                        var mx = (e.clientX-rect.left)*(900/rect.width), my = (e.clientY-rect.top)*(700/rect.height);
+                        positions[dragNode.id] = {x:mx, y:my};
+                        velocity[dragNode.id] = {x:0,y:0};
+                    }
+                };
+                canvas.onmouseup = function() { dragging=false; dragNode=null; };
+                document.getElementById('dep-reset').onclick = function() { transform.scale=1; transform.offsetX=450; transform.offsetY=350; };
+                document.getElementById('dep-zoomin').onclick = function() { transform.scale=Math.min(3, transform.scale*1.2); };
+                document.getElementById('dep-zoomout').onclick = function() { transform.scale=Math.max(0.3, transform.scale/1.2); };
+                closeBtn.onclick = function() { clearInterval(anim); modal.remove(); };
             });
         }
-    }
 
-    function loadChart() {
-        httpGet('/api/stats/online', function(err, data) {
-            if (err) return;
-            const currentRoom = document.getElementById('current-room').innerText;
-            const filtered = data.filter(d => d.roomId === currentRoom);
-            const times = filtered.map(d => new Date(d.time).toLocaleTimeString());
-            const counts = filtered.map(d => d.count);
-            const chart = echarts.init(document.getElementById('online-chart'));
-            chart.setOption({
-                title: { text: `房间 ${currentRoom} 在线人数` },
-                tooltip: { trigger: 'axis' },
-                xAxis: { type: 'category', data: times },
-                yAxis: { type: 'value', name: '人数' },
-                series: [{ type: 'line', data: counts, smooth: true, areaStyle: {} }]
-            });
-        });
-    }
-
-    function showPage(pageName) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(pageName + '-view').classList.add('active');
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-        document.querySelector(`nav button[data-page="${pageName}"]`).classList.add('active');
-        currentPage = pageName;
-        if (pageName === 'plugins') loadPluginsDetail();
-        if (pageName === 'market') loadMarketPlugins();
-        if (pageName === 'config') { loadMainConfig(); loadPluginSelect(); }
-        if (pageName === 'chart') loadChart();
-        if (pageName === 'dashboard') updateDashboard();
-    }
-
-    function init() {
-        document.querySelectorAll('nav button').forEach(b => b.onclick = () => showPage(b.dataset.page));
-        document.getElementById('save-main-config').onclick = saveMainConfig;
-        document.getElementById('save-plugin-config').onclick = savePluginConfig;
-        document.getElementById('restart-btn').onclick = restartBot;
-        document.getElementById('dep-graph-btn').onclick = loadDependencyGraph;
-        document.getElementById('refresh-market-btn').onclick = loadMarketPlugins;
-        
-        document.querySelectorAll('#config-view .mode-switch button').forEach(b => b.onclick = function() {
-            const card = this.closest('.card');
-            if (card.querySelector('h2').innerText.includes('主配置')) {
-                mainConfigMode = this.dataset.mode; loadMainConfig();
-            } else {
-                pluginConfigMode = this.dataset.pluginMode;
-                const pluginName = document.getElementById('plugin-select').value;
-                if (pluginName) {
-                    document.getElementById('plugin-config-form').style.display = pluginConfigMode === 'form' ? 'block' : 'none';
-                    document.getElementById('plugin-config-json').style.display = pluginConfigMode === 'json' ? 'block' : 'none';
+        // 主配置
+        function buildMainConfigForm(config) {
+            var fields = [
+                {n:'username',l:'用户名'}, {n:'password',l:'密码',t:'password'}, {n:'defaultRoomId',l:'默认房间ID'},
+                {n:'roomPassword',l:'房间密码'}, {n:'color',l:'消息颜色'}, {n:'signature',l:'签名'},
+                {n:'logLevel',l:'日志级别',s:['error','warn','info','debug']}, {n:'ownerUid',l:'主人UID'},
+                {n:'ownerName',l:'主人名称'}, {n:'adminList',l:'管理员列表',ta:true}
+            ];
+            var form = document.getElementById('main-config-form');
+            form.innerHTML = '';
+            fields.forEach(function(f) {
+                var div = document.createElement('div');
+                div.className = 'config-row';
+                var label = document.createElement('label');
+                label.innerText = f.l;
+                div.appendChild(label);
+                var input;
+                if (f.s) {
+                    input = document.createElement('select');
+                    f.s.forEach(function(v) { var o=document.createElement('option'); o.value=v; o.innerText=v; input.appendChild(o); });
+                } else if (f.ta) {
+                    input = document.createElement('textarea');
+                    input.rows = 2;
+                } else {
+                    input = document.createElement('input');
+                    input.type = f.t || 'text';
                 }
+                input.name = f.n;
+                if (f.n === 'adminList') input.value = JSON.stringify(config[f.n]||[], null, 2);
+                else input.value = config[f.n] !== undefined ? config[f.n] : '';
+                div.appendChild(input);
+                form.appendChild(div);
+            });
+        }
+        function loadMainConfig() {
+            httpGet('/api/config/main', function(err, cfg) {
+                if (err) return;
+                buildMainConfigForm(cfg);
+                document.getElementById('main-config-json').value = JSON.stringify(cfg, null, 2);
+                document.getElementById('main-config-json').style.display = mainConfigMode==='json'?'block':'none';
+                document.getElementById('main-config-form').style.display = mainConfigMode==='form'?'block':'none';
+            });
+        }
+        function saveMainConfig() {
+            var config;
+            if (mainConfigMode === 'form') {
+                var inputs = document.querySelectorAll('#main-config-form input, #main-config-form select, #main-config-form textarea');
+                var data = {};
+                inputs.forEach(function(inp) {
+                    var v = inp.value;
+                    if (inp.name === 'adminList') { try { v = JSON.parse(v); } catch(e) { alert('管理员列表JSON错误'); return; } }
+                    data[inp.name] = v;
+                });
+                config = data;
+            } else {
+                try { config = JSON.parse(document.getElementById('main-config-json').value); } catch(e) { alert('JSON错误'); return; }
             }
-            card.querySelectorAll('.mode-switch button').forEach(bt => bt.classList.remove('active'));
-            this.classList.add('active');
-        });
-        
-        connectWebSocket();
-        setInterval(updateDashboard, 5000);
-        updateDashboard();
-        showPage('dashboard');
-    }
-    
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
-</script>
+            httpPost('/api/config/main', config, function(err) { if (err) alert('保存失败'); else alert('已保存，重启后生效'); });
+        }
+
+        // 插件配置
+        function loadPluginSelect() {
+            httpGet('/api/plugins/detail', function(err, list) {
+                var sel = document.getElementById('plugin-select');
+                sel.innerHTML = '<option value="">-- 选择插件 --</option>';
+                (list||[]).forEach(function(p) { var o=document.createElement('option'); o.value=p.name; o.innerText=p.name; sel.appendChild(o); });
+                sel.onchange = function() {
+                    var name = sel.value;
+                    if (!name) { document.getElementById('plugin-config-form').style.display='none'; document.getElementById('plugin-config-json').style.display='none'; return; }
+                    httpGet('/api/config/plugin/'+name, function(err, cfg) {
+                        httpGet('/api/plugin/schema/'+name, function(err2, schema) {
+                            var form = document.getElementById('plugin-config-form');
+                            form.innerHTML = '';
+                            if (schema && Object.keys(schema).length) {
+                                for (var f in schema) {
+                                    var div = document.createElement('div');
+                                    div.className = 'config-row';
+                                    var label = document.createElement('label');
+                                    label.innerText = f;
+                                    div.appendChild(label);
+                                    var inp;
+                                    if (schema[f].type === 'boolean') { inp = document.createElement('input'); inp.type='checkbox'; inp.checked = cfg[f]||false; }
+                                    else { inp = document.createElement('input'); inp.type = schema[f].type==='number'?'number':'text'; inp.value = cfg[f]!==undefined?cfg[f]:''; }
+                                    inp.name = f;
+                                    div.appendChild(inp);
+                                    form.appendChild(div);
+                                }
+                            } else {
+                                form.innerHTML = '<p style="color:#888;">无配置说明，请使用JSON模式</p>';
+                            }
+                            document.getElementById('plugin-config-json').value = JSON.stringify(cfg, null, 2);
+                            if (pluginConfigMode==='form') { form.style.display='block'; document.getElementById('plugin-config-json').style.display='none'; }
+                            else { form.style.display='none'; document.getElementById('plugin-config-json').style.display='block'; }
+                            form.setAttribute('data-plugin', name);
+                        });
+                    });
+                };
+            });
+        }
+        function savePluginConfig() {
+            var name = document.getElementById('plugin-select').value;
+            if (!name) { alert('请选择插件'); return; }
+            var config;
+            if (pluginConfigMode === 'form') {
+                var inputs = document.querySelectorAll('#plugin-config-form input');
+                var data = {};
+                inputs.forEach(function(inp) {
+                    data[inp.name] = inp.type==='checkbox' ? inp.checked : (inp.type==='number'?parseFloat(inp.value):inp.value);
+                });
+                config = data;
+            } else {
+                try { config = JSON.parse(document.getElementById('plugin-config-json').value); } catch(e) { alert('JSON错误'); return; }
+            }
+            httpPost('/api/config/plugin/'+name, config, function(err) { if (err) alert('保存失败'); else alert('已保存'); });
+        }
+
+        // 插件市场
+        function loadMarket() {
+            httpGet('/api/market/list', function(err, data) {
+                if (err) { console.error(err); return; }
+                var tbody = document.querySelector('#market-table tbody');
+                tbody.innerHTML = '';
+                (data.plugins||[]).forEach(function(p) {
+                    var row = tbody.insertRow();
+                    row.insertCell(0).innerText = p.name;
+                    row.insertCell(1).innerText = p.version || '?';
+                    row.insertCell(2).innerText = (p.description||'').substring(0,40);
+                    var statusText = p.installed ? (p.hasUpdate ? '可更新' : '已安装') : '未安装';
+                    row.insertCell(3).innerText = statusText;
+                    var cell = row.insertCell(4);
+                    if (!p.installed) {
+                        var btn = document.createElement('button');
+                        btn.innerText = '安装';
+                        btn.style.fontSize = '0.72rem';
+                        btn.onclick = function() {
+                            httpPost('/api/market/install', {pluginName:p.name, downloadUrl:p.downloadUrl, version:p.version}, function(err) {
+                                if (err) alert('安装失败');
+                                else { alert('安装成功'); loadMarket(); loadPluginsDetail(); }
+                            });
+                        };
+                        cell.appendChild(btn);
+                    } else {
+                        if (p.hasUpdate) {
+                            var upd = document.createElement('button');
+                            upd.innerText = '更新';
+                            upd.className = 'secondary';
+                            upd.style.fontSize = '0.72rem';
+                            upd.onclick = function() {
+                                httpPost('/api/market/install', {pluginName:p.name, downloadUrl:p.downloadUrl, version:p.version}, function(err) {
+                                    if (err) alert('更新失败');
+                                    else { alert('更新成功'); loadMarket(); }
+                                });
+                            };
+                            cell.appendChild(upd);
+                        }
+                        var uninstall = document.createElement('button');
+                        uninstall.innerText = '卸载';
+                        uninstall.className = 'danger';
+                        uninstall.style.fontSize = '0.72rem';
+                        uninstall.onclick = function() {
+                            if (confirm('确定卸载 '+p.name+'？')) {
+                                httpPost('/api/market/uninstall', {pluginName:p.name}, function(err) {
+                                    if (err) alert('卸载失败');
+                                    else { alert('已卸载'); loadMarket(); loadPluginsDetail(); }
+                                });
+                            }
+                        };
+                        cell.appendChild(uninstall);
+                    }
+                });
+            });
+        }
+
+        // 图表
+        function loadChart() {
+            httpGet('/api/stats/online', function(err, data) {
+                if (err) return;
+                if (!data || !data.length) { document.getElementById('online-chart').innerHTML = '<p>暂无数据</p>'; return; }
+                var times = data.map(function(d){return new Date(d.time).toLocaleTimeString();});
+                var counts = data.map(function(d){return d.count;});
+                var chart = echarts.init(document.getElementById('online-chart'));
+                chart.setOption({
+                    grid: { left:'3%', right:'3%', bottom:'5%', containLabel:true },
+                    xAxis: { type:'category', data:times, boundaryGap:false },
+                    yAxis: { type:'value' },
+                    series: [{ type:'line', data:counts, smooth:true, areaStyle:{color:'rgba(91,141,239,0.15)'}, lineStyle:{color:'#5b8def'} }]
+                });
+            });
+        }
+
+        // 页面切换
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+            document.getElementById(name+'-view').classList.add('active');
+            document.querySelectorAll('nav button').forEach(function(b){ b.classList.remove('active'); });
+            var btn = document.querySelector('nav button[data-page="'+name+'"]');
+            if (btn) btn.classList.add('active');
+            currentPage = name;
+            if (name === 'plugins') loadPluginsDetail();
+            if (name === 'config') { loadMainConfig(); loadPluginSelect(); }
+            if (name === 'chart') loadChart();
+            if (name === 'market') loadMarket();
+        }
+
+        function init() {
+            document.querySelectorAll('nav button[data-page]').forEach(function(b) {
+                b.onclick = function() { showPage(this.getAttribute('data-page')); };
+            });
+            document.getElementById('save-main-config').onclick = saveMainConfig;
+            document.getElementById('save-plugin-config').onclick = savePluginConfig;
+            document.getElementById('restart-btn').onclick = function() {
+                if (confirm('重启机器人？')) { httpPost('/api/system/restart',{},function(){ setTimeout(function(){location.reload();},1500); }); }
+            };
+            document.getElementById('dep-graph-btn').onclick = loadDependencyGraph;
+
+            document.querySelectorAll('#config-view .mode-switch button').forEach(function(b) {
+                b.onclick = function() {
+                    if (this.hasAttribute('data-plugin-mode')) {
+                        pluginConfigMode = this.getAttribute('data-plugin-mode');
+                        var name = document.getElementById('plugin-select').value;
+                        if (name) {
+                            document.getElementById('plugin-config-form').style.display = pluginConfigMode==='form'?'block':'none';
+                            document.getElementById('plugin-config-json').style.display = pluginConfigMode==='json'?'block':'none';
+                        }
+                    } else {
+                        mainConfigMode = this.getAttribute('data-mode');
+                        loadMainConfig();
+                    }
+                    this.parentElement.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+                    this.classList.add('active');
+                };
+            });
+
+            connectWS();
+            setInterval(refreshDashboard, 5000);
+            refreshDashboard();
+            showPage('dashboard');
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+    </script>
 </body>
-    </html>
+</html>
